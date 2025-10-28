@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Set HOME explicitly when running as root (startup script context)
+export HOME=/root
+
 # install-base.sh
 # Common base system setup for zcash-vote-server validator node
 # Compatible with Ubuntu 22.04 LTS
@@ -29,10 +32,7 @@ apt-get install -y \
 echo "[3/5] Installing Rust toolchain..."
 if ! command -v rustc &> /dev/null; then
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-    # Source cargo env - handle case where HOME might not be set (root execution)
-    if [ -f "${HOME:-/root}/.cargo/env" ]; then
-        source "${HOME:-/root}/.cargo/env"
-    fi
+    source "$HOME/.cargo/env"
     # Add cargo to system-wide path
     echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /etc/profile.d/rust.sh
 else
