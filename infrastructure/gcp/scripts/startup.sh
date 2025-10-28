@@ -20,8 +20,34 @@ echo "Repository: ${vote_server_repo}"
 echo "Branch: ${vote_server_branch}"
 echo "=========================================="
 
+# Install Google Cloud Ops Agent for log forwarding to Cloud Logging
+echo "[Phase 0/7] Installing Google Cloud Ops Agent..."
+if ! systemctl is-active --quiet google-cloud-ops-agent; then
+    curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+    bash add-google-cloud-ops-agent-repo.sh --also-install
+    
+    # Configure to collect our custom log file
+    cat > /etc/google-cloud-ops-agent/config.yaml <<'OPSCONFIG'
+logging:
+  receivers:
+    zcash_vote_setup:
+      type: files
+      include_paths:
+        - /var/log/zcash-vote-setup.log
+  service:
+    pipelines:
+      default_pipeline:
+        receivers: [syslog, zcash_vote_setup]
+OPSCONFIG
+    
+    systemctl restart google-cloud-ops-agent
+    echo "Ops Agent installed and configured"
+else
+    echo "Ops Agent already running, skipping..."
+fi
+
 # Download setup scripts from repository
-echo "[Phase 1/6] Downloading setup scripts..."
+echo "[Phase 1/7] Downloading setup scripts..."
 mkdir -p "$SCRIPTS_DIR"
 cd "$SCRIPTS_DIR"
 
@@ -38,22 +64,22 @@ curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_
 chmod +x *.sh
 
 # Run base installation
-echo "[Phase 2/6] Installing base system..."
+echo "[Phase 2/7] Installing base system..."
 bash install-base.sh
 
 # Install CometBFT
-echo "[Phase 3/6] Installing CometBFT..."
+echo "[Phase 3/7] Installing CometBFT..."
 export COMETBFT_VERSION="${cometbft_version}"
 bash install-cometbft.sh
 
 # Build zcash-vote-server
-echo "[Phase 4/6] Building zcash-vote-server..."
+echo "[Phase 4/7] Building zcash-vote-server..."
 export VOTE_SERVER_REPO="${vote_server_repo}"
 export VOTE_SERVER_BRANCH="${vote_server_branch}"
 bash build-vote-server.sh
 
 # Initialize CometBFT as zcash-vote user
-echo "[Phase 5/6] Initializing CometBFT..."
+echo "[Phase 5/7] Initializing CometBFT..."
 sudo -u zcash-vote bash -c "cometbft init --home /opt/zcash-vote/.cometbft"
 
 # Get the node ID for peer configuration
@@ -61,7 +87,7 @@ NODE_ID=$(sudo -u zcash-vote cometbft show-node-id --home /opt/zcash-vote/.comet
 echo "Node ID: $NODE_ID"
 
 # Install systemd services
-echo "[Phase 6/6] Installing systemd services..."
+echo "[Phase 6/7] Installing systemd services..."
 cp systemd/cometbft.service /etc/systemd/system/
 cp systemd/zcash-vote-server.service /etc/systemd/system/
 systemctl daemon-reload
@@ -69,6 +95,7 @@ systemctl enable cometbft
 systemctl enable zcash-vote-server
 
 # Configure additional firewall rules if API access is enabled
+echo "[Phase 7/7] Final configuration..."
 %{ if enable_api_access }
 echo "Configuring API firewall access..."
 ufw allow 8000/tcp comment 'zcash-vote-server API'
