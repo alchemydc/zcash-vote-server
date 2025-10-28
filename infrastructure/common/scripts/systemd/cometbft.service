@@ -1,0 +1,29 @@
+[Unit]
+Description=CometBFT Consensus Engine
+Documentation=https://docs.cometbft.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zcash-vote
+Group=zcash-vote
+WorkingDirectory=/opt/zcash-vote
+ExecStart=/usr/local/bin/cometbft node --home /opt/zcash-vote/.cometbft
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cometbft
+
+[Install]
+WantedBy=multi-user.target

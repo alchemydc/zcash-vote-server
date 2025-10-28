@@ -1,1 +1,12 @@
 /target
+
+# Infrastructure files
+infrastructure/**/*.tfstate
+infrastructure/**/*.tfstate.*
+infrastructure/**/.terraform/
+infrastructure/**/.terraform.lock.hcl
+infrastructure/**/gcloud.env
+infrastructure/**/*.env
+!infrastructure/**/*.env.example
+infrastructure/**/crash.log
+infrastructure/**/crash.*.log
