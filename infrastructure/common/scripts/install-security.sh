@@ -125,6 +125,10 @@ echo "Enabling fail2ban service..."
 systemctl enable fail2ban
 systemctl restart fail2ban
 
+# Wait for fail2ban to fully initialize (socket creation)
+echo "Waiting for fail2ban to initialize..."
+sleep 3
+
 # Validate SSH configuration before restarting
 echo "Validating SSH configuration..."
 if sshd -t; then
@@ -140,7 +144,7 @@ else
     exit 1
 fi
 
-# Display fail2ban status
+# Display fail2ban status (non-fatal if it fails)
 echo ""
 echo "===================================="
 echo "Security Hardening Complete!"
@@ -153,7 +157,7 @@ echo "  - Root login: DISABLED"
 echo "  - Max auth tries: 3"
 echo ""
 echo "fail2ban Status:"
-fail2ban-client status
+fail2ban-client status || echo "fail2ban is starting up (status check will be available shortly)"
 echo ""
 echo "fail2ban SSH Jail:"
 fail2ban-client status sshd || echo "SSH jail will activate on first SSH activity"
