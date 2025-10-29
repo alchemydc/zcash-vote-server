@@ -1,20 +1,23 @@
 # Active Context
 
 ## Current Work Focus
-**GCP Startup Script Environment Fix** (October 29, 2025)
+**GCP Startup Script Build Architecture Fix** (October 29, 2025)
 
-Fixed critical bug in GCP deployment where `build-vote-server.sh` failed during VM startup due to shell environment issues. Required two fixes: (1) sourcing Rust environment explicitly, and (2) handling unbound HOME variable with `set -u` flag.
+Fixed critical architectural issue in GCP deployment where `build-vote-server.sh` attempted to build as the `zcash-vote` user who didn't have Rust/Cargo installed. Required three fixes: (1) sourcing Rust environment explicitly, (2) handling unbound HOME variable, and (3) building as root with proper ownership transfer.
 
 ## Recent Changes
-- ✅ **GCP Startup Script Bug Fix - Complete** (October 29, 2025)
+- ✅ **GCP Startup Script Build Fix - Complete** (October 29, 2025)
   - **Issue 1**: Cargo not found - startup script runs in root context without profile sourcing
     - Fixed by explicitly sourcing Rust environment from `$HOME/.cargo/env` or `/root/.cargo/env`
     - Added confirmation message when Rust environment is loaded
   - **Issue 2**: Unbound HOME variable - script uses `set -euo pipefail` which treats unbound vars as errors
     - Fixed by setting `HOME="${HOME:-/root}"` before using it
     - Matches pattern already used in `install-base.sh`
-  - Script now properly handles startup script context where HOME may not be set
-  - Both issues resolved in `infrastructure/common/scripts/build-vote-server.sh`
+  - **Issue 3**: User permission mismatch - attempted `sudo -u zcash-vote cargo build` but cargo only installed for root
+    - Architectural fix: Build as root (who has cargo), then `chown` build artifacts to `zcash-vote` user
+    - Removed `export CARGO_HOME` and `sudo -u` from build command
+    - Added explicit ownership transfer of `target/` directory after successful build
+  - All issues resolved in `infrastructure/common/scripts/build-vote-server.sh`
 
 - ✅ **GCP Bootstrap Infrastructure** (October 28, 2025)
   - Created `bootstrap.sh` - Full project setup automation with new/existing project support
