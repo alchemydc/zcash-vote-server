@@ -39,7 +39,8 @@ PermitRootLogin no
 PermitEmptyPasswords no
 
 # Limit authentication attempts
-MaxAuthTries 3
+# Set to 6 to accommodate SSH agents with multiple keys
+MaxAuthTries 6
 MaxSessions 2
 
 # Reduce login grace time
@@ -154,7 +155,7 @@ echo "SSH Configuration:"
 echo "  - Password authentication: DISABLED"
 echo "  - Key-based authentication: ENABLED"
 echo "  - Root login: DISABLED"
-echo "  - Max auth tries: 3"
+echo "  - Max auth tries: 6"
 echo ""
 echo "fail2ban Status:"
 fail2ban-client status || echo "fail2ban is starting up (status check will be available shortly)"

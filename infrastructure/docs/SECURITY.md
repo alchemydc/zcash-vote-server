@@ -51,7 +51,7 @@ During deployment, the `install-security.sh` script automatically:
 PasswordAuthentication no
 PubkeyAuthentication yes
 PermitRootLogin no
-MaxAuthTries 3
+MaxAuthTries 6
 MaxSessions 2
 LoginGraceTime 20
 ```
