@@ -59,8 +59,8 @@ fi
 
 # Build release version
 echo "[3/6] Building release binary (this may take several minutes)..."
-export CARGO_HOME="${INSTALL_DIR}/.cargo"
-sudo -u ${USER} -E cargo build --release
+# Build as root (who has cargo), then change ownership
+cargo build --release
 
 # Verify build
 echo "[4/6] Verifying build..."
@@ -71,6 +71,10 @@ fi
 
 echo "✓ Build successful"
 ls -lh target/release/zcash-vote-server
+
+# Change ownership of build artifacts to zcash-vote user
+echo "Setting ownership of build artifacts to ${USER}..."
+chown -R ${USER}:${USER} target/
 
 # Create necessary directories
 echo "[5/6] Creating application directories..."
