@@ -24,11 +24,12 @@ During deployment, the `install-security.sh` script automatically:
 
 2. **Hardens SSH Configuration**
    - Root login disabled
-   - Maximum 3 authentication attempts
+   - Maximum 6 authentication attempts (accommodates multiple SSH keys)
    - 20-second login grace time
    - Strong ciphers and MACs only
    - X11 forwarding disabled
    - TCP/Agent forwarding disabled
+   - PAM enabled (required for GCP SSH key injection from metadata)
 
 3. **Installs fail2ban**
    - Monitors SSH authentication attempts

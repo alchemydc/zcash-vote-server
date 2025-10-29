@@ -27,7 +27,10 @@ cat > /etc/ssh/sshd_config.d/99-hardening.conf <<'SSHCONFIG'
 # Disable password authentication - use keys only
 PasswordAuthentication no
 ChallengeResponseAuthentication no
-UsePAM no
+
+# Enable PAM for GCP SSH key injection from metadata
+# This allows GCP to dynamically inject keys while keeping passwords disabled
+UsePAM yes
 
 # Public key authentication only
 PubkeyAuthentication yes
