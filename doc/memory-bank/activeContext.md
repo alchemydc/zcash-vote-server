@@ -3,15 +3,18 @@
 ## Current Work Focus
 **GCP Startup Script Environment Fix** (October 29, 2025)
 
-Fixed critical bug in GCP deployment where `build-vote-server.sh` couldn't find Rust/Cargo during VM startup. Issue was caused by shell environment not sourcing the Rust environment before checking for cargo availability.
+Fixed critical bug in GCP deployment where `build-vote-server.sh` failed during VM startup due to shell environment issues. Required two fixes: (1) sourcing Rust environment explicitly, and (2) handling unbound HOME variable with `set -u` flag.
 
 ## Recent Changes
-- ✅ **GCP Startup Script Bug Fix** (October 29, 2025)
-  - Fixed `build-vote-server.sh` to source Rust environment before checking cargo availability
-  - Added dual-path check for `$HOME/.cargo/env` and `/root/.cargo/env`
-  - Added confirmation message when Rust environment is loaded
-  - Issue: startup script runs in root context without profile sourcing
-  - Solution: Explicitly source cargo environment at script start
+- ✅ **GCP Startup Script Bug Fix - Complete** (October 29, 2025)
+  - **Issue 1**: Cargo not found - startup script runs in root context without profile sourcing
+    - Fixed by explicitly sourcing Rust environment from `$HOME/.cargo/env` or `/root/.cargo/env`
+    - Added confirmation message when Rust environment is loaded
+  - **Issue 2**: Unbound HOME variable - script uses `set -euo pipefail` which treats unbound vars as errors
+    - Fixed by setting `HOME="${HOME:-/root}"` before using it
+    - Matches pattern already used in `install-base.sh`
+  - Script now properly handles startup script context where HOME may not be set
+  - Both issues resolved in `infrastructure/common/scripts/build-vote-server.sh`
 
 - ✅ **GCP Bootstrap Infrastructure** (October 28, 2025)
   - Created `bootstrap.sh` - Full project setup automation with new/existing project support

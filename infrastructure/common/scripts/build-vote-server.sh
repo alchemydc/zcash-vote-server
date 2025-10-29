@@ -16,6 +16,9 @@ echo "Repository: ${REPO_URL}"
 echo "Branch: ${BRANCH}"
 echo "===================================="
 
+# Set HOME if not already set (startup script context)
+export HOME="${HOME:-/root}"
+
 # Load Rust environment if installed
 if [ -f "$HOME/.cargo/env" ]; then
     source "$HOME/.cargo/env"
