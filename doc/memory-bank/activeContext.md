@@ -1,11 +1,18 @@
 # Active Context
 
 ## Current Work Focus
-**GCP Bootstrap Infrastructure Complete!** (October 28, 2025)
+**GCP Startup Script Environment Fix** (October 29, 2025)
 
-Major milestone: Implemented comprehensive bootstrap automation for GCP project setup, solving IAM permission issues and network configuration challenges. Created production-ready scripts for project initialization, service account management, and cleanup operations.
+Fixed critical bug in GCP deployment where `build-vote-server.sh` couldn't find Rust/Cargo during VM startup. Issue was caused by shell environment not sourcing the Rust environment before checking for cargo availability.
 
 ## Recent Changes
+- ✅ **GCP Startup Script Bug Fix** (October 29, 2025)
+  - Fixed `build-vote-server.sh` to source Rust environment before checking cargo availability
+  - Added dual-path check for `$HOME/.cargo/env` and `/root/.cargo/env`
+  - Added confirmation message when Rust environment is loaded
+  - Issue: startup script runs in root context without profile sourcing
+  - Solution: Explicitly source cargo environment at script start
+
 - ✅ **GCP Bootstrap Infrastructure** (October 28, 2025)
   - Created `bootstrap.sh` - Full project setup automation with new/existing project support
   - Created `cleanup.sh` - Safe removal of bootstrap resources with multiple confirmation levels
