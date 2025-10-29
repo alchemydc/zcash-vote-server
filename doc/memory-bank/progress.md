@@ -77,11 +77,17 @@
 
 #### Installation Scripts ✅
 - [x] Base system setup (install-base.sh)
+- [x] Security hardening (install-security.sh)
+  - SSH hardening (key-based auth only, no passwords)
+  - fail2ban installation and configuration
+  - Automatic IP banning for brute force attacks
+  - Configuration backup and rollback on failure
 - [x] CometBFT installation automation (install-cometbft.sh)
 - [x] zcash-vote-server build automation (build-vote-server.sh)
 - [x] Systemd service definitions (cometbft.service, zcash-vote-server.service)
 - [x] GCP startup script orchestration (startup.sh)
   - Fixed template variable issue: `${NODE_ID}` → `$${NODE_ID}`
+  - Integrated security script download
 - [x] Cloud-agnostic script design
 
 #### Documentation ✅

@@ -53,6 +53,7 @@ cd "$SCRIPTS_DIR"
 
 # Get the common scripts directly from the repository
 curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_server_branch}/infrastructure/common/scripts/install-base.sh -o install-base.sh
+curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_server_branch}/infrastructure/common/scripts/install-security.sh -o install-security.sh
 curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_server_branch}/infrastructure/common/scripts/install-cometbft.sh -o install-cometbft.sh
 curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_server_branch}/infrastructure/common/scripts/build-vote-server.sh -o build-vote-server.sh
 

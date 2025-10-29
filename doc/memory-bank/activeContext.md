@@ -1,11 +1,41 @@
 # Active Context
 
 ## Current Work Focus
-**GCP Startup Script Build Architecture Fix** (October 29, 2025)
+**Security Hardening Implementation** (October 29, 2025)
 
-Fixed critical architectural issue in GCP deployment where `build-vote-server.sh` attempted to build as the `zcash-vote` user who didn't have Rust/Cargo installed. Required three fixes: (1) sourcing Rust environment explicitly, (2) handling unbound HOME variable, and (3) building as root with proper ownership transfer.
+Implemented comprehensive security hardening for validator deployments to protect against SSH brute force attacks. Added fail2ban for automatic IP banning and hardened SSH configuration to allow only key-based authentication.
 
 ## Recent Changes
+- ✅ **Security Hardening Implementation - Complete** (October 29, 2025)
+  - **Created `install-security.sh`**: Standalone security hardening script
+    - Disables password authentication (SSH keys only)
+    - Hardens SSH configuration (no root login, max 3 attempts, strong ciphers)
+    - Installs and configures fail2ban (3 attempts in 10 min = 1 hour ban)
+    - Creates backup of SSH config with automatic rollback on failure
+    - Validates configuration before applying changes
+  - **Updated `install-base.sh`**: Integrated security script into base installation
+    - Calls `install-security.sh` as final step (phase 6/6)
+    - Gracefully handles missing script for backwards compatibility
+  - **Updated `startup.sh`**: Downloads security script from repository
+    - Added security script to downloaded files list
+    - Ensures security hardening runs on all new deployments
+  - **Created comprehensive documentation**: `infrastructure/docs/SECURITY.md`
+    - SSH hardening details and configuration locations
+    - fail2ban management commands (status, ban/unban IPs)
+    - Firewall (UFW) configuration guide
+    - SSH key management and rotation procedures
+    - Security best practices checklist
+    - Troubleshooting guide (locked out, recovery procedures)
+    - Advanced configuration (adjusting thresholds, email alerts)
+    - Compliance and auditing commands
+  - **Key Security Features**:
+    - Password authentication: DISABLED
+    - Key-based authentication: REQUIRED
+    - Root login: DISABLED
+    - fail2ban: ACTIVE (automatic IP banning)
+    - Configuration backups: AUTOMATIC
+    - Rollback on failure: AUTOMATIC
+
 - ✅ **GCP Startup Script Build Fix - Complete** (October 29, 2025)
   - **Issue 1**: Cargo not found - startup script runs in root context without profile sourcing
     - Fixed by explicitly sourcing Rust environment from `$HOME/.cargo/env` or `/root/.cargo/env`

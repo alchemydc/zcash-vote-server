@@ -49,12 +49,22 @@ ufw allow 26656/tcp comment 'CometBFT P2P'
 # Note: Additional firewall rules will be configured based on deployment needs
 
 # Create application user
-echo "[5/5] Creating application user..."
+echo "[5/6] Creating application user..."
 if ! id -u zcash-vote &> /dev/null; then
     useradd -r -m -s /bin/bash -d /opt/zcash-vote zcash-vote
     echo "User 'zcash-vote' created"
 else
     echo "User 'zcash-vote' already exists, skipping..."
+fi
+
+# Run security hardening (if script exists)
+echo "[6/6] Running security hardening..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/install-security.sh" ]; then
+    bash "$SCRIPT_DIR/install-security.sh"
+else
+    echo "Security script not found at $SCRIPT_DIR/install-security.sh"
+    echo "Skipping security hardening - install manually if needed"
 fi
 
 echo "===================================="
