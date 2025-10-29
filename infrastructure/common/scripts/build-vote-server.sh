@@ -16,6 +16,15 @@ echo "Repository: ${REPO_URL}"
 echo "Branch: ${BRANCH}"
 echo "===================================="
 
+# Load Rust environment if installed
+if [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+    echo "✓ Loaded Rust environment from $HOME/.cargo/env"
+elif [ -f /root/.cargo/env ]; then
+    source /root/.cargo/env
+    echo "✓ Loaded Rust environment from /root/.cargo/env"
+fi
+
 # Ensure Rust is available
 if ! command -v cargo &> /dev/null; then
     echo "Error: Rust/Cargo not found. Please run install-base.sh first."
