@@ -67,6 +67,12 @@ variable "admin_ip_ranges" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "remote_ssh_enabled" {
+  description = "Allow direct remote SSH (opens TCP/22). Default: false"
+  type        = bool
+  default     = false
+}
+
 variable "enable_api_public_access" {
   description = "Whether to allow public access to the API port (8000)"
   type        = bool

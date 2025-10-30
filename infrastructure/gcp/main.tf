@@ -20,8 +20,9 @@ resource "google_project_iam_member" "monitoring" {
   member  = "serviceAccount:${google_service_account.validator.email}"
 }
 
-# Firewall rule for SSH access
+# Firewall rule for SSH access (created only when remote SSH is enabled)
 resource "google_compute_firewall" "ssh" {
+  count   = var.remote_ssh_enabled ? 1 : 0
   name    = "${var.validator_name}-allow-ssh"
   network = var.network_name
 
@@ -31,9 +32,9 @@ resource "google_compute_firewall" "ssh" {
   }
 
   source_ranges = var.admin_ip_ranges
-  target_tags   = ["${var.validator_name}"]
+  target_tags   = ["${var.validator_name}-ssh"]
 
-  description = "Allow SSH access to ${var.validator_name}"
+  description = "Allow SSH access to ${var.validator_name} when remote_ssh_enabled = true"
 }
 
 # Firewall rule for CometBFT P2P (required for validator network)
@@ -50,6 +51,25 @@ resource "google_compute_firewall" "cometbft_p2p" {
   target_tags   = ["${var.validator_name}"]
 
   description = "Allow CometBFT P2P connections for ${var.validator_name}"
+}
+
+# Firewall rule to allow SSH from IAP TCP forwarding IP range only.
+# This allows `gcloud compute ssh --tunnel-through-iap` while keeping SSH closed to the public.
+resource "google_compute_firewall" "ssh_iap" {
+  name    = "${var.validator_name}-allow-ssh-iap"
+  network = var.network_name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  # IAP TCP forwarding source CIDR (documented by Google)
+  source_ranges = ["35.235.240.0/20"]
+
+  target_tags   = ["${var.validator_name}"]
+
+  description = "Allow SSH from IAP TCP forwarding only (enables gcloud --tunnel-through-iap)"
 }
 
 # Firewall rule for API access (optional)
@@ -119,7 +139,7 @@ resource "google_compute_instance" "validator" {
   machine_type = var.machine_type
   zone         = var.zone
 
-  tags = ["${var.validator_name}", "zcash-vote-validator"]
+  tags = concat(["${var.validator_name}", "zcash-vote-validator"], var.remote_ssh_enabled ? ["${var.validator_name}-ssh"] : [])
 
   boot_disk {
     initialize_params {
@@ -150,6 +170,7 @@ resource "google_compute_instance" "validator" {
     ssh-keys               = "ubuntu:${var.admin_ssh_key}"
     enable-oslogin         = "FALSE"
     block-project-ssh-keys = "TRUE"
+    remote-ssh-enabled     = tostring(var.remote_ssh_enabled)
   }
 
   metadata_startup_script = templatefile("${path.module}/scripts/startup.sh", {
