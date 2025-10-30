@@ -1,3 +1,21 @@
+locals {
+  ssh_key = tostring(var.remote_ssh_enabled && var.enable_external_ip)
+
+  ssh_map = {
+    "true" = format("ssh ubuntu@%s", google_compute_address.validator[0].address)
+    "false" = format("gcloud compute ssh %s --zone %s --tunnel-through-iap", google_compute_instance.validator.name, var.zone)
+  }
+
+  ssh_command = local.ssh_map[local.ssh_key]
+
+  comet_map = {
+    "true"  = format("%s:26656", google_compute_address.validator[0].address)
+    "false" = format("%s:26656", google_compute_instance.validator.network_interface[0].network_ip)
+  }
+
+  cometbft_addr = local.comet_map[tostring(var.enable_external_ip)]
+}
+
 output "instance_name" {
   description = "Name of the validator instance"
   value       = google_compute_instance.validator.name
@@ -30,12 +48,12 @@ output "service_account_email" {
 
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = var.enable_external_ip ? "ssh ubuntu@${google_compute_address.validator[0].address}" : "Use gcloud compute ssh ${google_compute_instance.validator.name} --zone ${var.zone}"
+  value       = local.ssh_command
 }
 
 output "cometbft_p2p_address" {
   description = "CometBFT P2P address for peer configuration"
-  value       = var.enable_external_ip ? "${google_compute_address.validator[0].address}:26656" : "${google_compute_instance.validator.network_interface[0].network_ip}:26656"
+  value       = local.cometbft_addr
 }
 
 output "api_endpoint" {
@@ -50,7 +68,7 @@ output "post_deployment_instructions" {
     Deployment complete! Next steps:
     
     1. SSH to the instance:
-       ${var.enable_external_ip ? "ssh ubuntu@${google_compute_address.validator[0].address}" : "gcloud compute ssh ${google_compute_instance.validator.name} --zone ${var.zone}"}
+       ${local.ssh_command}
     
     2. Check installation logs:
        sudo journalctl -u google-startup-scripts -f
@@ -73,7 +91,7 @@ output "post_deployment_instructions" {
        sudo journalctl -u zcash-vote-server -f
     
     Your CometBFT P2P address for peer configuration:
-       ${var.enable_external_ip ? "${google_compute_address.validator[0].address}:26656" : "${google_compute_instance.validator.network_interface[0].network_ip}:26656"}
+       ${local.cometbft_addr}
     
   EOT
 }

@@ -255,3 +255,9 @@ orchard = { git = "...", rev = "..." }
 - Most dependencies pinned to specific versions
 - Critical security: Update regularly
 - Test thoroughly after updates (consensus compatibility)
+
+## Admin access pattern (added Oct 30, 2025)
+
+- Default operator access: prefer IAP tunneling using `gcloud compute ssh --tunnel-through-iap`. An IAP-only firewall rule (35.235.240.0/20) is created so IAP tunnels reach instances while SSH remains closed to the public internet.
+- To enable direct SSH (temporary, restricted): set `TF_VAR_remote_ssh_enabled=true` and restrict `TF_VAR_admin_ip_ranges` to trusted CIDRs; Terraform then creates an SSH firewall and the startup script runs `install-security.sh` to harden SSH.
+- Rationale: default IAP-first reduces attack surface while allowing convenient operator access; direct SSH is opt-in and hardened when enabled.
