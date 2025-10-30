@@ -42,6 +42,20 @@
 ## What's Left to Build
 
 ### Infrastructure Automation ✅
+#### OpenTofu/Terraform - GCP ✅
+- [x] GCP infrastructure provisioning scripts (main.tf, variables.tf, outputs.tf)
+- [x] Network configuration (VPC, firewall rules)
+- [x] Compute instance templates (e2-standard-2, Ubuntu 22.04)
+- [x] Static IP allocation
+- [x] IAM roles and permissions (service account with minimal privileges)
+- [x] Cloud Logging and Monitoring integration
+- [x] Automatic snapshot scheduling (daily, 7-day retention)
+- [x] Security hardening (SSH restrictions, UFW firewall)
++ 
++ - [x] IAP-only SSH firewall rule (allows 35.235.240.0/20) to support `gcloud --tunnel-through-iap`
++ - [x] `TF_VAR_remote_ssh_enabled` toggle (default false) to opt-in direct SSH and run install-security.sh
+
+### Infrastructure Automation ✅
 **GCP Implementation Complete** (October 28, 2025)
 
 #### OpenTofu/Terraform - GCP ✅

@@ -46,6 +46,8 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp comment 'SSH'
 ufw allow 26656/tcp comment 'CometBFT P2P'
+# show the rules after configuration
+ufw status verbose
 # Note: Additional firewall rules will be configured based on deployment needs
 
 # Create application user

@@ -64,6 +64,18 @@ curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_
 
 chmod +x *.sh
 
+# Conditionally run security hardening based on instance metadata
+echo "[Phase 1.5/7] Checking remote SSH metadata flag..."
+REMOTE_SSH_ENABLED=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/remote-ssh-enabled" || echo "false")
+
+if [ "$${REMOTE_SSH_ENABLED,,}" = "true" ]; then
+  echo "Remote SSH enabled: running install-security.sh"
+  # install-security.sh is idempotent; run after base scripts are present
+  bash install-security.sh || echo "install-security.sh failed (non-fatal) and will not block setup"
+else
+  echo "Remote SSH disabled: skipping install-security.sh (use gcloud compute ssh to access the instance)"
+fi
+
 # Run base installation
 echo "[Phase 2/7] Installing base system..."
 bash install-base.sh

@@ -66,6 +66,18 @@ Implemented comprehensive security hardening for validator deployments to protec
   - Created extensive documentation and deployment guides
   - Set up multi-cloud directory structure (GCP ready, AWS/DO placeholders)
 
+### Remote SSH and IAP change (October 30, 2025)
+
+- Added a GCP Terraform toggle: `TF_VAR_remote_ssh_enabled` (bool, default = false).
+  - Default = false: no public SSH firewall is created; operators must use `gcloud compute ssh --tunnel-through-iap` or a bastion host to access instances.
+  - When true: Terraform creates an SSH firewall using `TF_VAR_admin_ip_ranges` and the startup script runs `install-security.sh` (hardens SSH, installs fail2ban).
+
+- Added `google_compute_firewall.ssh_iap` to allow SSH only from Google's IAP proxy CIDR (`35.235.240.0/20`) so IAP TCP forwarding works while SSH remains closed to the public.
+
+- Fixed Terraform `templatefile()` interpolation issues by escaping shell `${...}` sequences as `$${...}` in `infrastructure/gcp/scripts/startup.sh`.
+
+- Rationale: Default-off reduces external attack surface; IAP-only rule preserves secure operator access via `gcloud --tunnel-through-iap`.
+
 ## Next Steps
 1. Potential follow-up tasks:
    - Test GCP deployment end-to-end
