@@ -14,6 +14,39 @@ locals {
   }
 
   cometbft_addr = local.comet_map[tostring(var.enable_external_ip)]
+
+  # Backup command formats
+  direct_backup_validator_cmd = format(
+    "ssh ubuntu@%s 'sudo cat /opt/zcash-vote/.cometbft/config/priv_validator_key.json'",
+    google_compute_address.validator[0].address
+  )
+
+  direct_backup_node_cmd = format(
+    "ssh ubuntu@%s 'sudo cat /opt/zcash-vote/.cometbft/config/node_key.json'",
+    google_compute_address.validator[0].address
+  )
+
+  iap_backup_validator_cmd = format(
+    "gcloud compute ssh %s --zone %s --tunnel-through-iap --command='sudo cat /opt/zcash-vote/.cometbft/config/priv_validator_key.json'",
+    google_compute_instance.validator.name,
+    var.zone
+  )
+
+  iap_backup_node_cmd = format(
+    "gcloud compute ssh %s --zone %s --tunnel-through-iap --command='sudo cat /opt/zcash-vote/.cometbft/config/node_key.json'",
+    google_compute_instance.validator.name,
+    var.zone
+  )
+
+  backup_validator_map = {
+    "true"  = local.direct_backup_validator_cmd
+    "false" = local.iap_backup_validator_cmd
+  }
+
+  backup_node_map = {
+    "true"  = local.direct_backup_node_cmd
+    "false" = local.iap_backup_node_cmd
+  }
 }
 
 output "instance_name" {
@@ -56,6 +89,21 @@ output "cometbft_p2p_address" {
   value       = local.cometbft_addr
 }
 
+output "backup_validator_key_command" {
+  description = "Command to print the validator private key (priv_validator_key.json). SENSITIVE - store securely offline."
+  value       = local.backup_validator_map[local.ssh_key]
+}
+
+output "backup_node_key_command" {
+  description = "Command to print the node identity key (node_key.json). SENSITIVE - store securely offline."
+  value       = local.backup_node_map[local.ssh_key]
+}
+
+output "validator_address_command" {
+  description = "Command to show the validator address (safe to share)."
+  value       = "${local.ssh_command} 'sudo -u zcash-vote cometbft show-address --home /opt/zcash-vote/.cometbft'"
+}
+
 output "api_endpoint" {
   description = "API endpoint (if public access is enabled)"
   value       = var.enable_api_public_access && var.enable_external_ip ? "http://${google_compute_address.validator[0].address}:8000" : "Not publicly accessible"
@@ -89,8 +137,24 @@ output "post_deployment_instructions" {
     6. Check logs:
        sudo journalctl -u cometbft -f
        sudo journalctl -u zcash-vote-server -f
+
+    7. Backup critical keys (MANDATORY for production)
+       The validator private key (priv_validator_key.json) and the node identity key (node_key.json)
+       are required to recover or move this validator. Back them up securely immediately after
+       deployment. These files are sensitive and must NOT be committed to source control.
     
-    Your CometBFT P2P address for peer configuration:
+       a. Retrieve the sensitive keys from the deployed instance:
+          node key: `${local.backup_node_map[local.ssh_key]}`
+          validator key: `${local.backup_validator_map[local.ssh_key]}`
+    
+       b. Save keys to secure local files, or preferably a password manager, etc.
+    
+       c. Secure storage recommendations:
+          - Store backups offline (encrypted USB, hardware security module, or an encrypted vault)
+          - Encrypt files at rest and keep access restricted (GPG, age, or a KMS-backed envelope)
+          - Never transmit unencrypted private keys over email or push to public storage
+    
+    Your CometBFT P2P address which will be shared with peers:
        ${local.cometbft_addr}
     
   EOT
