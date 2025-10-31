@@ -21,6 +21,26 @@ echo "Repository: ${vote_server_repo}"
 echo "Branch: ${vote_server_branch}"
 echo "=========================================="
 
+# Configure GNU Screen early so admins have function-key bindings during setup
+echo "[Setup] Configuring GNU Screen system-wide..."
+cat > /etc/screenrc <<'SCREENRC'
+# Function key bindings for screen window navigation
+bindkey -k k1 select 0  #  F1 = screen 0
+bindkey -k k2 select 1  #  F2 = screen 1
+bindkey -k k3 select 2  #  F3 = screen 2
+bindkey -k k4 select 3  #  F4 = screen 3
+bindkey -k k5 select 4  #  F5 = screen 4
+bindkey -k k6 select 5  #  F6 = screen 5
+bindkey -k k7 select 6  #  F7 = screen 6
+bindkey -k k8 select 7  #  F8 = screen 7
+bindkey -k k9 select 8  #  F9 = screen 8
+bindkey -k k10 select 9 #  F10 = screen 9
+bindkey -k F1 prev      # F11 = prev
+bindkey -k F2 next      # F12 = next
+SCREENRC
+chmod 644 /etc/screenrc || true
+echo "GNU Screen configured (system /etc/screenrc written)"
+
 # Install Google Cloud Ops Agent for log forwarding to Cloud Logging
 echo "[Phase 0/7] Installing Google Cloud Ops Agent..."
 if ! systemctl is-active --quiet google-cloud-ops-agent; then
