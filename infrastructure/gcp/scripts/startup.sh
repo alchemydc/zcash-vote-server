@@ -108,6 +108,28 @@ fi
 NODE_ID=$(sudo -u zcash-vote cometbft show-node-id --home /opt/zcash-vote/.cometbft)
 echo "Node ID: $NODE_ID"
 
+# Display key backup instructions and public key info (safe to log)
+VALIDATOR_ADDRESS=$(sudo -u zcash-vote cometbft show-address --home /opt/zcash-vote/.cometbft || true)
+VALIDATOR_PUBKEY=$(sudo -u zcash-vote jq -r '.pub_key.value' /opt/zcash-vote/.cometbft/config/priv_validator_key.json 2>/dev/null || echo "N/A")
+NODE_KEY_ID=$(sudo -u zcash-vote jq -r '.id' /opt/zcash-vote/.cometbft/config/node_key.json 2>/dev/null || echo "N/A")
+
+echo "=========================================="
+echo "IMPORTANT: BACKUP KEYS NOW"
+echo "=========================================="
+echo "Validator Address: $${VALIDATOR_ADDRESS}"
+echo "Validator PubKey: $${VALIDATOR_PUBKEY}"
+echo "Node Key ID: $${NODE_KEY_ID}"
+echo ""
+echo "Critical files to backup (on the instance):"
+echo "  - /opt/zcash-vote/.cometbft/config/priv_validator_key.json"
+echo "  - /opt/zcash-vote/.cometbft/config/node_key.json"
+echo ""
+echo "You can retrieve these with the Terraform output commands or via SSH:"
+echo "  - Terraform: tofu output -raw backup_validator_key_command"
+echo "  - SSH: Run the exact command returned by: tofu output -raw ssh_command"
+echo "    (that value will include --tunnel-through-iap when SSH is not exposed publicly)"
+echo "=========================================="
+
 # Install systemd services
 echo "[Phase 6/7] Installing systemd services..."
 cp systemd/cometbft.service /etc/systemd/system/
