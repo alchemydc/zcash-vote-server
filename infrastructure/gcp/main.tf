@@ -44,7 +44,7 @@ resource "google_compute_firewall" "cometbft_p2p" {
 
   allow {
     protocol = "tcp"
-    ports    = ["26656"]
+    ports    = [tostring(var.cometbft_p2p_port)]
   }
 
   source_ranges = ["0.0.0.0/0"]
@@ -180,6 +180,7 @@ resource "google_compute_instance" "validator" {
     validator_name      = var.validator_name
     enable_api_access   = var.enable_api_public_access
     api_allowed_ranges  = join(",", var.api_allowed_ip_ranges)
+    cometbft_p2p_port   = var.cometbft_p2p_port
   })
 
   labels = merge(

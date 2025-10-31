@@ -193,7 +193,16 @@ See `/opt/zcash-vote/POST_DEPLOYMENT.md` on the instance for detailed instructio
 
 By default:
 - SSH is restricted to IPs in `admin_ip_ranges`
-- CometBFT P2P (port 26656) is open for validator network
+- CometBFT P2P is open for the validator network and the port is configurable via `TF_VAR_cometbft_p2p_port` (default: `26656`)
+  - The configured port is applied at both the GCP firewall (defense-in-depth) and the instance-level UFW rules by the startup scripts.
+  - To change the port, set the variable in your `gcloud.env` before running OpenTofu/terraform:
+    ```bash
+    # edit gcloud.env or export directly
+    export TF_VAR_cometbft_p2p_port=26666
+    source gcloud.env
+    tofu plan
+    ```
+  - After deployment, the Terraform output `cometbft_p2p_address` will include the chosen port for peer configuration.
 - API (port 8000) is NOT publicly accessible
 
 To enable public API access:
