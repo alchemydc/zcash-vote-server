@@ -16,6 +16,7 @@ echo "Zcash Vote Server Setup - $(date)"
 echo "=========================================="
 echo "Validator: ${validator_name}"
 echo "CometBFT Version: ${cometbft_version}"
+echo "CometBFT P2P Port: ${cometbft_p2p_port}"
 echo "Repository: ${vote_server_repo}"
 echo "Branch: ${vote_server_branch}"
 echo "=========================================="
@@ -83,6 +84,7 @@ bash install-base.sh
 # Install CometBFT
 echo "[Phase 3/7] Installing CometBFT..."
 export COMETBFT_VERSION="${cometbft_version}"
+export COMETBFT_P2P_PORT="${cometbft_p2p_port}"
 bash install-cometbft.sh
 
 # Build zcash-vote-server
@@ -94,6 +96,13 @@ bash build-vote-server.sh
 # Initialize CometBFT as zcash-vote user
 echo "[Phase 5/7] Initializing CometBFT..."
 sudo -u zcash-vote bash -c "cometbft init --home /opt/zcash-vote/.cometbft"
+
+# Apply custom P2P port if configured
+COMET_PORT="${cometbft_p2p_port}"
+if [ "$${COMET_PORT}" != "26656" ]; then
+  echo "Configuring CometBFT P2P port to $${COMET_PORT} in config.toml..."
+  sudo -u zcash-vote sed -i "s|laddr = \"tcp://0.0.0.0:26656\"|laddr = \"tcp://0.0.0.0:$${COMET_PORT}\"|" /opt/zcash-vote/.cometbft/config/config.toml || echo "Warning: failed to update laddr in config.toml"
+fi
 
 # Get the node ID for peer configuration
 NODE_ID=$(sudo -u zcash-vote cometbft show-node-id --home /opt/zcash-vote/.cometbft)
@@ -113,6 +122,10 @@ echo "[Phase 7/7] Final configuration..."
 echo "Configuring API firewall access..."
 ufw allow 8000/tcp comment 'zcash-vote-server API'
 %{ endif }
+
+# Configure CometBFT P2P firewall (always configured locally)
+echo "Configuring CometBFT P2P firewall..."
+ufw allow ${cometbft_p2p_port}/tcp comment 'CometBFT P2P'
 
 # Create a helpful README for the operator
 cat > /opt/zcash-vote/POST_DEPLOYMENT.md <<'POSTDEPLOY'
@@ -143,7 +156,7 @@ Get peer information from other validators and update the config:
 sudo -u zcash-vote nano /opt/zcash-vote/.cometbft/config/config.toml
 
 # Find the persistent_peers line and add other validators:
-# persistent_peers = "node_id1@ip1:26656,node_id2@ip2:26656,node_id3@ip3:26656"
+# persistent_peers = "node_id1@ip1:${cometbft_p2p_port},node_id2@ip2:${cometbft_p2p_port},node_id3@ip3:${cometbft_p2p_port}"
 ```
 
 Your node ID for sharing with other validators:
@@ -194,7 +207,7 @@ curl localhost:26657/status | jq .result.sync_info.latest_block_height
 - Check logs: `sudo journalctl -u cometbft -n 100`
 
 ### Not syncing blocks
-- Verify network connectivity to peers (port 26656)
+- Verify network connectivity to peers (port ${cometbft_p2p_port})
 - Check peer addresses are correct
 - Ensure at least 2/3 of validators are online
 

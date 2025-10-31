@@ -76,6 +76,19 @@ Implemented comprehensive security hardening for validator deployments to protec
 
 - Fixed Terraform `templatefile()` interpolation issues by escaping shell `${...}` sequences as `$${...}` in `infrastructure/gcp/scripts/startup.sh`.
 
+- ✅ **Configurable CometBFT P2P port - Complete** (October 31, 2025)
+  - **Added `TF_VAR_cometbft_p2p_port`** to `infrastructure/gcp/gcloud.env.example` (default: 26656)
+  - **Added Terraform variable** `cometbft_p2p_port` (validated 1024–65535) in `infrastructure/gcp/variables.tf`
+  - **Updated GCP firewall** (`google_compute_firewall.cometbft_p2p`) to use `var.cometbft_p2p_port`
+  - **Propagated port to startup script** via `metadata_startup_script` templatefile in `infrastructure/gcp/main.tf`
+  - **Updated outputs** (`infrastructure/gcp/outputs.tf`) to include the configured port in `cometbft_p2p_address`
+  - **Updated startup script** (`infrastructure/gcp/scripts/startup.sh`) to:
+    - log and export `COMETBFT_P2P_PORT` for downstream scripts,
+    - apply a local UFW rule for the configured port,
+    - update CometBFT `config.toml` `laddr` after `cometbft init` when a non-default port is used,
+    - escape runtime-only shell variables so `templatefile()` succeeds.
+  - **Rationale**: Allows flexible port configuration for multi-node local testing and custom deployments while preserving defense-in-depth (GCP firewall + UFW).
+
 - Rationale: Default-off reduces external attack surface; IAP-only rule preserves secure operator access via `gcloud --tunnel-through-iap`.
 
 ## Next Steps

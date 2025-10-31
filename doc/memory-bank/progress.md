@@ -100,8 +100,8 @@
 - [x] zcash-vote-server build automation (build-vote-server.sh)
 - [x] Systemd service definitions (cometbft.service, zcash-vote-server.service)
 - [x] GCP startup script orchestration (startup.sh)
-  - Fixed template variable issue: `${NODE_ID}` → `$${NODE_ID}`
-  - Integrated security script download
+- [x] Integrated security script download
+- [x] Configurable CometBFT P2P port
 - [x] Cloud-agnostic script design
 
 #### Documentation ✅

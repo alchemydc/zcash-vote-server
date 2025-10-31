@@ -9,8 +9,8 @@ locals {
   ssh_command = local.ssh_map[local.ssh_key]
 
   comet_map = {
-    "true"  = format("%s:26656", google_compute_address.validator[0].address)
-    "false" = format("%s:26656", google_compute_instance.validator.network_interface[0].network_ip)
+    "true"  = format("%s:%d", google_compute_address.validator[0].address, var.cometbft_p2p_port)
+    "false" = format("%s:%d", google_compute_instance.validator.network_interface[0].network_ip, var.cometbft_p2p_port)
   }
 
   cometbft_addr = local.comet_map[tostring(var.enable_external_ip)]

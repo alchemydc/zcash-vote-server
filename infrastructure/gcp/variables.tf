@@ -135,3 +135,14 @@ variable "labels" {
     component  = "zcash-vote-server"
   }
 }
+
+variable "cometbft_p2p_port" {
+  description = "CometBFT P2P network port"
+  type        = number
+  default     = 26656
+
+  validation {
+    condition     = var.cometbft_p2p_port >= 1024 && var.cometbft_p2p_port <= 65535
+    error_message = "Port must be between 1024 and 65535"
+  }
+}
