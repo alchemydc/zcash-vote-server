@@ -14,40 +14,40 @@ pub struct Tx {
 }
 
 #[rocket::get("/election/<id>")]
-pub async fn get_election_by_id(id: String, state: &State<Context>) -> Result<Json<Value>, String> {
-    (async {
-        let mut connection = state.pool.acquire().await?;
-        let (_, election, _) = get_election(&mut connection, &id).await?;
+pub fn get_election_by_id(id: String, state: &State<Context>) -> Result<Json<Value>, String> {
+    (|| {
+        let connection = state.pool.get()?;
+        let (_, election, _) = get_election(&connection, &id)?;
         let election = serde_json::from_str::<Value>(&election)?;
         Ok::<_, Error>(Json(election))
-    }).await
+    })()
     .map_err(|e| e.to_string())
 }
 
 #[rocket::get("/election/<id>/ballot/height/<height>")]
-pub async fn get_ballot_height(
+pub fn get_ballot_height(
     id: String,
     height: u32,
     state: &State<Context>,
 ) -> Result<Json<Value>, Custom<String>> {
-    (async {
-        let mut connection = state.pool.acquire().await?;
-        let (id_election, _, _) = get_election(&mut connection, &id).await?;
-        let ballot = crate::db::get_ballot_height(&mut connection, id_election, height).await?;
+    (|| {
+        let connection = state.pool.get()?;
+        let (id_election, _, _) = get_election(&connection, &id)?;
+        let ballot = crate::db::get_ballot_height(&connection, id_election, height)?;
         let ballot = serde_json::from_str::<Value>(&ballot)?;
         Ok::<_, Error>(Json(ballot))
-    }).await
+    })()
     .map_err(|e| Custom(Status::InternalServerError, e.to_string()))
 }
 
 #[rocket::get("/election/<id>/num_ballots")]
-pub async fn get_num_ballots(id: String, state: &State<Context>) -> Result<String, Custom<String>> {
-    (async {
-        let mut connection = state.pool.acquire().await?;
-        let (id_election, _, _) = get_election(&mut connection, &id).await?;
-        let n = crate::db::get_num_ballots(&mut connection, id_election).await?;
+pub fn get_num_ballots(id: String, state: &State<Context>) -> Result<String, Custom<String>> {
+    (|| {
+        let connection = state.pool.get()?;
+        let (id_election, _, _) = get_election(&connection, &id)?;
+        let n = crate::db::get_num_ballots(&connection, id_election)?;
         Ok::<_, Error>(n.to_string())
-    }).await
+    })()
     .map_err(|e| Custom(Status::InternalServerError, e.to_string()))
 }
 
@@ -76,27 +76,17 @@ pub async fn post_ballot(
         let url = format!("http://127.0.0.1:{rpc_port}/v1");
         tracing::info!("Post to {}", url);
         let client = reqwest::Client::new();
-        let rep = client
-            .post(&url)
-            .json(&req_body)
-            .send()
-            .await?
-            .error_for_status()?;
+        let rep = client.post(&url)
+            .json(&req_body).send().await?.error_for_status()?;
         let json_rep: Value = rep.json().await?;
         tracing::info!("post ballot rep: {:?}", json_rep);
         if let Some(error_msg) = json_rep.pointer("/error/data") {
             anyhow::bail!(error_msg.as_str().unwrap().to_string());
         }
-        let result = &json_rep
-            .pointer("/result/hash")
-            .map(|v| v.as_str().unwrap().to_string())
-            .unwrap_or_default();
+        let result = &json_rep.pointer("/result/hash")
+            .map(|v| v.as_str().unwrap().to_string()).unwrap_or_default();
 
         Ok::<_, Error>(result.clone())
     };
-    res.await.map_err(|e| {
-        let e = e.root_cause();
-        let err_string = e.to_string();
-        Custom(Status::InternalServerError, err_string)
-    })
+    res.await.map_err(|e| Custom(Status::InternalServerError, e.to_string()))
 }

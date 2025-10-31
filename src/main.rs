@@ -1,6 +1,7 @@
 use anyhow::{Error, Result};
 use rocket::{figment::Figment, routes, Build, Config, Rocket, State};
 use rocket_cors::CorsOptions;
+use rusqlite::params;
 use tendermint_abci::ServerBuilder;
 use zcash_vote_server::{
     chain::VoteChain,
@@ -11,23 +12,20 @@ use zcash_vote_server::{
 };
 
 #[rocket::get("/")]
-async fn index(context: &State<Context>) -> Result<String, String> {
-    let r = async {
-        let connection = &context.pool;
-        let (n,): (u32,) = sqlx::query_as("SELECT COUNT(*) FROM t")
-            .fetch_one(connection)
-            .await?;
-
+fn index(context: &State<Context>) -> Result<String, String> {
+    let r = || {
+        let connection = context.pool.get()?;
+        let n = connection.query_row("SELECT COUNT(*) FROM t", [], |r| r.get::<_, u32>(0))?;
         Ok::<_, Error>(n.to_string())
     };
-    r.await.map_err(|e| e.to_string())
+    r().map_err(|e| e.to_string())
 }
 
-pub async fn init_context(config: &Figment) -> Result<Context> {
+pub fn init_context(config: &Figment) -> Result<Context> {
     let data_path: String = config.extract_inner("custom.data_path")?;
     let db_path: String = config.extract_inner("custom.db_path")?;
     let cometbft_port: u16 = config.extract_inner("custom.cometbft_port")?;
-    let context = Context::new(data_path, db_path, cometbft_port).await;
+    let context = Context::new(data_path, db_path, cometbft_port);
     Ok(context)
 }
 
@@ -35,30 +33,23 @@ async fn rocket_build(config: Figment, context: Context) -> Rocket<Build> {
     let init = async {
         let elections = scan_data_dir(&context.data_path)?;
         tracing::info!("# elections = {}", elections.len());
-        let mut connection = context.pool.acquire().await?;
-        sqlx::query("UPDATE elections SET closed = TRUE")
-            .execute(&mut *connection)
-            .await?;
+        let connection = context.pool.get()?;
+        connection.execute("UPDATE elections SET closed = TRUE", [])?;
         for e in elections.iter() {
-            let id_election = store_election(&mut connection, e, false).await?;
+            let connection = context.pool.get()?;
+            let id_election = store_election(&connection, e, false)?;
             let cmx_root = e.cmx_frontier.as_ref().unwrap().root();
             let frontier = serde_json::to_string(&e.cmx_frontier)?;
-            sqlx::query(
+            connection.execute(
                 "INSERT INTO cmx_frontiers(election, height, frontier)
-                VALUES (?1, 0, ?2) ON CONFLICT DO NOTHING",
-            )
-            .bind(id_election)
-            .bind(&frontier)
-            .execute(&mut *connection)
-            .await?;
-            sqlx::query(
+            VALUES (?1, 0, ?2) ON CONFLICT DO NOTHING",
+                params![id_election, &frontier],
+            )?;
+            connection.execute(
                 "INSERT INTO cmx_roots(election, height, hash)
             VALUES (?1, 0, ?2) ON CONFLICT DO NOTHING",
-            )
-            .bind(id_election)
-            .bind(cmx_root.as_slice())
-            .execute(&mut *connection)
-            .await?;
+                params![id_election, &cmx_root],
+            )?;
         }
 
         Ok::<_, Error>(context)
@@ -88,16 +79,18 @@ pub async fn main() {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
     let config = Config::figment();
-    let context = init_context(&config).await.expect("Failed to initialize context");
-    let mut connection = context.pool.acquire().await.expect("Failed to acquire connection");
-    create_schema(&mut connection).await.expect("Failed to create schema");
+    let context = init_context(&config).unwrap();
+    {
+        let connection = context.pool.get().unwrap();
+        create_schema(&connection).unwrap();
+    }
 
-    let (app, runner) = VoteChain::new(connection.detach());
+    let (app, runner) = VoteChain::new(context.pool.get().unwrap());
     let server = ServerBuilder::new(1_000_000)
         .bind(format!("{}:{}", "127.0.0.1", context.comet_bft), app)
         .unwrap();
-    rocket::tokio::spawn(async move {
-        let res = runner.run().await;
+    std::thread::spawn(move || {
+        let res = runner.run();
         println!("{:?}", res);
     });
     std::thread::spawn(move || server.listen().unwrap());
