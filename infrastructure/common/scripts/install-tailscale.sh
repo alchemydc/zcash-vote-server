@@ -20,7 +20,7 @@ fi
 
 # Install prerequisites (curl/apt-transport already expected from install-base.sh)
 echo "[1/5] Adding Tailscale repository and key..."
-curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarch.gpg | \
+curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | \
     tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null 2>&1 || true
 
 curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | \

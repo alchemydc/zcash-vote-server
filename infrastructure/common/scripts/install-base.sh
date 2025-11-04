@@ -59,15 +59,12 @@ else
     echo "User 'zcash-vote' already exists, skipping..."
 fi
 
-# Run security hardening (if script exists)
-echo "[6/6] Running security hardening..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/install-security.sh" ]; then
-    bash "$SCRIPT_DIR/install-security.sh"
-else
-    echo "Security script not found at $SCRIPT_DIR/install-security.sh"
-    echo "Skipping security hardening - install manually if needed"
-fi
+# Security hardening is performed by startup.sh when the instance metadata flag
+# remote-ssh-enabled indicates public SSH is required. Do NOT run security
+# hardening unconditionally here to avoid enabling fail2ban/ssh hardening when
+# SSH is only available via IAP / tunnel.
+echo "[6/6] Security hardening is controlled by startup.sh; skipping here."
+echo "To run manually: bash \"${SCRIPTS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/install-security.sh\""
 
 echo "===================================="
 echo "Base system setup complete!"
