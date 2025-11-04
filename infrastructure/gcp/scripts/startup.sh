@@ -42,7 +42,7 @@ chmod 644 /etc/screenrc || true
 echo "GNU Screen configured (system /etc/screenrc written)"
 
 # Install Google Cloud Ops Agent for log forwarding to Cloud Logging
-echo "[Phase 0/8] Installing Google Cloud Ops Agent..."
+echo "[Phase 0] Installing Google Cloud Ops Agent..."
 if ! systemctl is-active --quiet google-cloud-ops-agent; then
     curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
     bash add-google-cloud-ops-agent-repo.sh --also-install
@@ -68,7 +68,7 @@ else
 fi
 
 # Download setup scripts from repository
-echo "[Phase 1/8] Downloading setup scripts..."
+echo "[Phase 1] Downloading setup scripts..."
 mkdir -p "$SCRIPTS_DIR"
 cd "$SCRIPTS_DIR"
 
@@ -87,23 +87,20 @@ curl -fsSL https://raw.githubusercontent.com/alchemydc/zcash-vote-server/${vote_
 chmod +x *.sh
 
 # Conditionally run security hardening based on instance metadata
-echo "[Phase 1.5/8] Checking remote SSH metadata flag..."
+echo "[Phase 2] Checking remote SSH metadata flag..."
 REMOTE_SSH_ENABLED=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/remote-ssh-enabled" || echo "false")
 
-  if [ "$${REMOTE_SSH_ENABLED,,}" = "true" ]; then
+if [ "$${REMOTE_SSH_ENABLED,,}" = "true" ]; then
   echo "Remote SSH enabled: running install-security.sh"
-  # install-security.sh is idempotent; run after base scripts are present
+  # install-security.sh is idempotent; run before other installs when SSH is exposed
   bash "$SCRIPTS_DIR/install-security.sh" || echo "install-security.sh failed (non-fatal) and will not block setup"
 else
   echo "Remote SSH disabled: skipping install-security.sh (use gcloud compute ssh to access the instance)"
 fi
 
-# Run base installation
-echo "[Phase 2/8] Installing base system..."
-bash "$SCRIPTS_DIR/install-base.sh"
-
+# Optionally install Tailscale before base system if enabled
 %{ if enable_tailscale }
-echo "[Phase 2.5/8] Installing and configuring Tailscale..."
+echo "[Phase 3] Installing and configuring Tailscale..."
 export TAILSCALE_AUTH_KEY="${tailscale_auth_key}"
 export TAILSCALE_TAILNET="${tailscale_tailnet}"
 export TAILSCALE_TAGS="${tailscale_tags}"
@@ -117,20 +114,24 @@ export COMETBFT_BIND_IP="$${TAILSCALE_IP}"
 export COMETBFT_BIND_IP="0.0.0.0"
 %{ endif }
 
+# Run base installation
+echo "[Phase 4] Installing base system..."
+bash "$SCRIPTS_DIR/install-base.sh"
+
 # Install CometBFT
-echo "[Phase 3/8] Installing CometBFT..."
+echo "[Phase 5] Installing CometBFT..."
 export COMETBFT_VERSION="${cometbft_version}"
 export COMETBFT_P2P_PORT="${cometbft_p2p_port}"
 bash "$SCRIPTS_DIR/install-cometbft.sh"
 
 # Build zcash-vote-server
-echo "[Phase 4/8] Building zcash-vote-server..."
+echo "[Phase 6] Building zcash-vote-server..."
 export VOTE_SERVER_REPO="${vote_server_repo}"
 export VOTE_SERVER_BRANCH="${vote_server_branch}"
 bash "$SCRIPTS_DIR/build-vote-server.sh"
 
 # Initialize CometBFT as zcash-vote user
-echo "[Phase 5/8] Initializing CometBFT..."
+echo "[Phase 7] Initializing CometBFT..."
 sudo -u zcash-vote bash -c "cometbft init --home /opt/zcash-vote/.cometbft"
 
 # Configure CometBFT binding and/or custom P2P port
@@ -172,7 +173,7 @@ echo "    (that value will include --tunnel-through-iap when SSH is not exposed 
 echo "=========================================="
 
 # Install systemd services
-echo "[Phase 6/8] Installing systemd services..."
+echo "[Phase 8] Installing systemd services..."
 cp "$SCRIPTS_DIR/systemd/cometbft.service" /etc/systemd/system/
 cp "$SCRIPTS_DIR/systemd/zcash-vote-server.service" /etc/systemd/system/
 systemctl daemon-reload
@@ -180,7 +181,7 @@ systemctl enable cometbft
 systemctl enable zcash-vote-server
 
 # Configure additional firewall rules if API access is enabled
-echo "[Phase 7/8] Final configuration..."
+echo "[Phase 9] Final configuration..."
 %{ if enable_api_access }
 echo "Configuring API firewall access..."
 ufw allow 8000/tcp comment 'zcash-vote-server API'
