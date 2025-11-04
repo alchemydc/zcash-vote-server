@@ -170,5 +170,5 @@ variable "tailscale_tailnet" {
 variable "tailscale_advertise_tags" {
   description = "Tailscale ACL tags to advertise (e.g., tag:validator)"
   type        = list(string)
-  default     = ["tag:validator"]
+  default     = []
 }

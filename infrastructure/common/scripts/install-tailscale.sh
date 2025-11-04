@@ -20,11 +20,13 @@ fi
 
 # Install prerequisites (curl/apt-transport already expected from install-base.sh)
 echo "[1/5] Adding Tailscale repository and key..."
+# Download the Tailscale archive key into a dedicated keyring (modern APT usage)
 curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | \
     tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null 2>&1 || true
 
-curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | \
-    tee /etc/apt/sources.list.d/tailscale.list >/dev/null 2>&1 || true
+# Create an explicit sources.list entry that references the keyring via signed-by
+echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu jammy main" | \
+    tee /etc/apt/sources.list.d/tailscale.list >/dev/null 2>&1
 
 echo "[2/5] Installing Tailscale..."
 apt-get update -qq
