@@ -146,3 +146,29 @@ variable "cometbft_p2p_port" {
     error_message = "Port must be between 1024 and 65535"
   }
 }
+
+# Tailscale integration variables
+variable "enable_tailscale" {
+  description = "Enable Tailscale for encrypted P2P networking"
+  type        = bool
+  default     = false
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key for headless authentication (sensitive)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "tailscale_tailnet" {
+  description = "Tailscale tailnet name (e.g., myorg.tailscale.net)"
+  type        = string
+  default     = ""
+}
+
+variable "tailscale_advertise_tags" {
+  description = "Tailscale ACL tags to advertise (e.g., tag:validator)"
+  type        = list(string)
+  default     = ["tag:validator"]
+}

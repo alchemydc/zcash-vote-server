@@ -13,10 +13,20 @@ resource "google_project_iam_member" "logging" {
   member  = "serviceAccount:${google_service_account.validator.email}"
 }
 
+
 resource "google_project_iam_member" "monitoring" {
   count   = var.enable_cloud_monitoring ? 1 : 0
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
+  member  = "serviceAccount:${google_service_account.validator.email}"
+}
+
+# Grant Secret Manager access to the validator service account when Tailscale is enabled.
+# This allows the startup script to retrieve a stored Tailscale auth key securely.
+resource "google_project_iam_member" "secrets_accessor" {
+  count   = var.enable_tailscale ? 1 : 0
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.validator.email}"
 }
 
@@ -37,8 +47,11 @@ resource "google_compute_firewall" "ssh" {
   description = "Allow SSH access to ${var.validator_name} when remote_ssh_enabled = true"
 }
 
+
 # Firewall rule for CometBFT P2P (required for validator network)
+# This rule is created only when Tailscale is NOT enabled so the P2P port is not exposed to the internet.
 resource "google_compute_firewall" "cometbft_p2p" {
+  count   = var.enable_tailscale ? 0 : 1
   name    = "${var.validator_name}-allow-cometbft-p2p"
   network = var.network_name
 
@@ -50,7 +63,7 @@ resource "google_compute_firewall" "cometbft_p2p" {
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["${var.validator_name}"]
 
-  description = "Allow CometBFT P2P connections for ${var.validator_name}"
+  description = "Allow CometBFT P2P connections for ${var.validator_name} (Tailscale disabled)"
 }
 
 # Firewall rule to allow SSH from IAP TCP forwarding IP range only.
