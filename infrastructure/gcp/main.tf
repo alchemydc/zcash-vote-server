@@ -194,6 +194,10 @@ resource "google_compute_instance" "validator" {
     enable_api_access   = var.enable_api_public_access
     api_allowed_ranges  = join(",", var.api_allowed_ip_ranges)
     cometbft_p2p_port   = var.cometbft_p2p_port
+    enable_tailscale     = var.enable_tailscale
+    tailscale_auth_key   = var.tailscale_auth_key
+    tailscale_tailnet    = var.tailscale_tailnet
+    tailscale_tags       = join(",", var.tailscale_advertise_tags)
   })
 
   labels = merge(

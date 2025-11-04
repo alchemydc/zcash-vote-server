@@ -2,29 +2,29 @@ locals {
   ssh_key = tostring(var.remote_ssh_enabled && var.enable_external_ip)
 
   ssh_map = {
-    "true" = format("ssh ubuntu@%s", google_compute_address.validator[0].address)
+    "true" = var.enable_external_ip ? format("ssh ubuntu@%s", google_compute_address.validator[0].address) : ""
     "false" = format("gcloud compute ssh %s --zone %s --tunnel-through-iap", google_compute_instance.validator.name, var.zone)
   }
 
   ssh_command = local.ssh_map[local.ssh_key]
 
   comet_map = {
-    "true"  = format("%s:%d", google_compute_address.validator[0].address, var.cometbft_p2p_port)
+    "true"  = var.enable_external_ip ? format("%s:%d", google_compute_address.validator[0].address, var.cometbft_p2p_port) : ""
     "false" = format("%s:%d", google_compute_instance.validator.network_interface[0].network_ip, var.cometbft_p2p_port)
   }
 
   cometbft_addr = local.comet_map[tostring(var.enable_external_ip)]
 
   # Backup command formats
-  direct_backup_validator_cmd = format(
+  direct_backup_validator_cmd = var.enable_external_ip ? format(
     "ssh ubuntu@%s 'sudo cat /opt/zcash-vote/.cometbft/config/priv_validator_key.json'",
     google_compute_address.validator[0].address
-  )
+  ) : ""
 
-  direct_backup_node_cmd = format(
+  direct_backup_node_cmd = var.enable_external_ip ? format(
     "ssh ubuntu@%s 'sudo cat /opt/zcash-vote/.cometbft/config/node_key.json'",
     google_compute_address.validator[0].address
-  )
+  ) : ""
 
   iap_backup_validator_cmd = format(
     "gcloud compute ssh %s --zone %s --tunnel-through-iap --command='sudo cat /opt/zcash-vote/.cometbft/config/priv_validator_key.json'",
@@ -102,16 +102,18 @@ output "tailscale_ip_command" {
 
 output "peer_configuration_note" {
   description = "Instructions for peer configuration"
-  value = var.enable_tailscale ? <<-EOT
+  value = var.enable_tailscale ? (<<-EOT
     Tailscale is ENABLED. Configure persistent_peers using Tailscale IPs:
     1. Get each validator's Tailscale IP: terraform output -raw tailscale_ip_command
     2. Use format: node_id@TAILSCALE_IP:${var.cometbft_p2p_port}
     3. CometBFT P2P port is NOT exposed to public internet
-  EOT : <<-EOT
+  EOT
+  ) : (<<-EOT
     Tailscale is DISABLED. Configure persistent_peers using public IPs:
     1. Use format: node_id@PUBLIC_IP:${var.cometbft_p2p_port}
     2. CometBFT P2P port is open to internet (ensure network security)
   EOT
+  )
 }
 
 output "backup_validator_key_command" {
