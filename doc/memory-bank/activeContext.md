@@ -91,6 +91,26 @@ Implemented comprehensive security hardening for validator deployments to protec
 
 - Rationale: Default-off reduces external attack surface; IAP-only rule preserves secure operator access via `gcloud --tunnel-through-iap`.
 
+### Key backup facilitation - Complete (October 31, 2025)
+
+- Implemented measures to encourage and facilitate secure backup of validator key material:
+  - Added sensitive Terraform outputs in `infrastructure/gcp/outputs.tf`:
+    - `backup_validator_key_command` (sensitive): returns an IAP-aware or direct SSH command to print `/opt/zcash-vote/.cometbft/config/priv_validator_key.json`
+    - `backup_node_key_command` (sensitive): returns an IAP-aware or direct SSH command to print `/opt/zcash-vote/.cometbft/config/node_key.json`
+    - `validator_address_command`: returns a command to show the validator address (safe to share)
+  - Updated the GCP startup script `infrastructure/gcp/scripts/startup.sh` to:
+    - Log validator address, validator pubkey (safe-to-share), and node key id after `cometbft init`
+    - Print clear, prominent backup instructions referencing the Terraform outputs and the IAP-aware `ssh_command`
+    - Escape shell interpolation (`${...}` → `$${...}`) so `templatefile()` runs without requiring runtime-only variables
+    - Add an early system-wide `/etc/screenrc` so admins connecting during setup have screen function-key bindings
+  - Added explicit post-deployment backup instructions to `outputs.tf` documenting retrieval via the sensitive outputs, example secure save commands, and storage recommendations (GPG/age/KMS, offline copies, permissions)
+  - Marked retrieval outputs as `sensitive` in Terraform to reduce accidental exposure
+
+- Security notes (recorded here for operators and documentation):
+  - `priv_validator_key.json` is critical — store offline, encrypted, or in an HSM and never commit to source control.
+  - Always run the exact commands returned by Terraform outputs on a trusted machine and save with restrictive permissions (e.g., `chmod 600`).
+  - Prefer encrypted, offline storage and at least two geographically separated copies for disaster recovery.
+
 ## Next Steps
 1. Potential follow-up tasks:
    - Test GCP deployment end-to-end
