@@ -89,6 +89,31 @@ output "cometbft_p2p_address" {
   value       = local.cometbft_addr
 }
 
+output "tailscale_enabled" {
+  description = "Whether Tailscale is enabled"
+  value       = var.enable_tailscale
+}
+
+output "tailscale_ip_command" {
+  description = "Command to retrieve Tailscale IP from instance"
+  sensitive   = true
+  value       = var.enable_tailscale ? "${local.ssh_command} 'tailscale ip -4'" : "N/A (Tailscale disabled)"
+}
+
+output "peer_configuration_note" {
+  description = "Instructions for peer configuration"
+  value = var.enable_tailscale ? <<-EOT
+    Tailscale is ENABLED. Configure persistent_peers using Tailscale IPs:
+    1. Get each validator's Tailscale IP: terraform output -raw tailscale_ip_command
+    2. Use format: node_id@TAILSCALE_IP:${var.cometbft_p2p_port}
+    3. CometBFT P2P port is NOT exposed to public internet
+  EOT : <<-EOT
+    Tailscale is DISABLED. Configure persistent_peers using public IPs:
+    1. Use format: node_id@PUBLIC_IP:${var.cometbft_p2p_port}
+    2. CometBFT P2P port is open to internet (ensure network security)
+  EOT
+}
+
 output "backup_validator_key_command" {
   description = "Command to print the validator private key (priv_validator_key.json). SENSITIVE - store securely offline."
   value       = local.backup_validator_map[local.ssh_key]

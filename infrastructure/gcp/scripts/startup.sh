@@ -98,11 +98,26 @@ else
 fi
 
 # Run base installation
-echo "[Phase 2/7] Installing base system..."
+echo "[Phase 2/8] Installing base system..."
 bash install-base.sh
 
+%{ if enable_tailscale }
+echo "[Phase 2.5/8] Installing and configuring Tailscale..."
+export TAILSCALE_AUTH_KEY="${tailscale_auth_key}"
+export TAILSCALE_TAILNET="${tailscale_tailnet}"
+export TAILSCALE_TAGS="${tailscale_tags}"
+bash install-tailscale.sh
+
+# Get Tailscale IP for CometBFT binding (may be empty on failure)
+TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || true)
+echo "Tailscale IP assigned: $${TAILSCALE_IP}"
+export COMETBFT_BIND_IP="$${TAILSCALE_IP}"
+%{ else }
+export COMETBFT_BIND_IP="0.0.0.0"
+%{ endif }
+
 # Install CometBFT
-echo "[Phase 3/7] Installing CometBFT..."
+echo "[Phase 3/8] Installing CometBFT..."
 export COMETBFT_VERSION="${cometbft_version}"
 export COMETBFT_P2P_PORT="${cometbft_p2p_port}"
 bash install-cometbft.sh
@@ -114,14 +129,19 @@ export VOTE_SERVER_BRANCH="${vote_server_branch}"
 bash build-vote-server.sh
 
 # Initialize CometBFT as zcash-vote user
-echo "[Phase 5/7] Initializing CometBFT..."
+echo "[Phase 5/8] Initializing CometBFT..."
 sudo -u zcash-vote bash -c "cometbft init --home /opt/zcash-vote/.cometbft"
 
-# Apply custom P2P port if configured
+# Configure CometBFT binding and/or custom P2P port
 COMET_PORT="${cometbft_p2p_port}"
-if [ "$${COMET_PORT}" != "26656" ]; then
-  echo "Configuring CometBFT P2P port to $${COMET_PORT} in config.toml..."
-  sudo -u zcash-vote sed -i "s|laddr = \"tcp://0.0.0.0:26656\"|laddr = \"tcp://0.0.0.0:$${COMET_PORT}\"|" /opt/zcash-vote/.cometbft/config/config.toml || echo "Warning: failed to update laddr in config.toml"
+if [ -n "$${COMETBFT_BIND_IP}" ] && [ "$${COMETBFT_BIND_IP}" != "0.0.0.0" ]; then
+  echo "Configuring CometBFT to bind to $${COMETBFT_BIND_IP}:$${COMET_PORT} in config.toml..."
+  sudo -u zcash-vote sed -i "s|laddr = \"tcp://0.0.0.0:26656\"|laddr = \"tcp://$${COMETBFT_BIND_IP}:$${COMET_PORT}\"|" /opt/zcash-vote/.cometbft/config/config.toml || echo "Warning: failed to update laddr in config.toml"
+else
+  if [ "$${COMET_PORT}" != "26656" ]; then
+    echo "Configuring CometBFT P2P port to $${COMET_PORT} in config.toml..."
+    sudo -u zcash-vote sed -i "s|laddr = \"tcp://0.0.0.0:26656\"|laddr = \"tcp://0.0.0.0:$${COMET_PORT}\"|" /opt/zcash-vote/.cometbft/config/config.toml || echo "Warning: failed to update laddr in config.toml"
+  fi
 fi
 
 # Get the node ID for peer configuration
@@ -159,15 +179,20 @@ systemctl enable cometbft
 systemctl enable zcash-vote-server
 
 # Configure additional firewall rules if API access is enabled
-echo "[Phase 7/7] Final configuration..."
+echo "[Phase 7/8] Final configuration..."
 %{ if enable_api_access }
 echo "Configuring API firewall access..."
 ufw allow 8000/tcp comment 'zcash-vote-server API'
 %{ endif }
 
-# Configure CometBFT P2P firewall (always configured locally)
+%{ if enable_tailscale }
+echo "Configuring CometBFT P2P firewall for Tailscale only..."
+# Allow P2P port only from Tailscale subnet (RFC6598 / 100.64.0.0/10)
+ufw allow from 100.64.0.0/10 to any port ${cometbft_p2p_port} proto tcp comment 'CometBFT P2P (Tailscale)'
+%{ else }
 echo "Configuring CometBFT P2P firewall..."
 ufw allow ${cometbft_p2p_port}/tcp comment 'CometBFT P2P'
+%{ endif }
 
 # Create a helpful README for the operator
 cat > /opt/zcash-vote/POST_DEPLOYMENT.md <<'POSTDEPLOY'
