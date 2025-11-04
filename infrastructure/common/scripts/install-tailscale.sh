@@ -7,7 +7,7 @@ set -euo pipefail
 
 TAILSCALE_AUTH_KEY="${TAILSCALE_AUTH_KEY:-}"
 TAILSCALE_TAILNET="${TAILSCALE_TAILNET:-}"
-TAILSCALE_TAGS="${TAILSCALE_TAGS:-tag:validator}"
+TAILSCALE_TAGS="${TAILSCALE_TAGS:-}"
 
 echo "===================================="
 echo "Tailscale Installation"
