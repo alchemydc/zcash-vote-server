@@ -39,6 +39,15 @@
 - **Reset Procedures**: Development reset workflow documented
 - **Multi-Validator Setup**: Production deployment guide available
 
+### Tailscale Integration ✅
+- Optional Tailscale-based P2P mesh: implemented and documented (see `infrastructure/docs/TAILSCALE.md`)
+- Terraform variables added: `enable_tailscale`, `tailscale_auth_key`, `tailscale_tailnet`, `tailscale_advertise_tags`
+- Startup script integration: installs Tailscale when enabled, reads the node's Tailscale IP, binds CometBFT `laddr` to the Tailscale IP, and applies UFW rules restricting P2P access to the Tailscale subnet (100.64.0.0/10)
+- Migration and rollback instructions included in the TAILSCALE docs
+- Notes:
+  - Operators should store auth keys in Secret Manager for production
+  - Startup logs tailscale IP when available and continues gracefully with warnings if Tailscale fails
+
 ## What's Left to Build
 
 ### Infrastructure Automation ✅

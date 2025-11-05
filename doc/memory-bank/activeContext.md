@@ -89,7 +89,17 @@ Implemented comprehensive security hardening for validator deployments to protec
     - escape runtime-only shell variables so `templatefile()` succeeds.
   - **Rationale**: Allows flexible port configuration for multi-node local testing and custom deployments while preserving defense-in-depth (GCP firewall + UFW).
 
-- Rationale: Default-off reduces external attack surface; IAP-only rule preserves secure operator access via `gcloud --tunnel-through-iap`.
+- ✅ **Tailscale Integration - Complete** (November 4, 2025)
+  - Implemented optional Tailscale-based P2P mesh to encrypt CometBFT P2P traffic and avoid exposing the P2P port publicly.
+  - **Added** `infrastructure/common/scripts/install-tailscale.sh` to install and configure tailscale with headless auth.
+  - **Added Terraform variables** in `infrastructure/gcp/variables.tf`: `enable_tailscale`, `tailscale_auth_key`, `tailscale_tailnet`, `tailscale_advertise_tags`.
+  - **Updated** `infrastructure/gcp/main.tf` to conditionally skip creating the public P2P firewall when `enable_tailscale = true`.
+  - **Updated** `infrastructure/gcp/scripts/startup.sh` to call `install-tailscale.sh` when enabled, read the node's Tailscale IP, bind CometBFT `laddr` to the Tailscale IP, and apply UFW rules restricting P2P access to the Tailscale subnet (100.64.0.0/10).
+  - **Added** `infrastructure/docs/TAILSCALE.md` with detailed operator instructions, POC patterns, secure auth key handling, Terraform integration, troubleshooting, and migration/rollback guidance.
+  - **Notes**:
+    - Operators should store auth keys in Secret Manager for production.
+    - Startup script logs a tailscale IP when available and continues gracefully with warnings if Tailscale fails so operators can inspect and remediate.
+    - Migration path: enable Tailscale per-node, update peers to Tailscale IPs, then remove public firewall as desired.
 
 ### Key backup facilitation - Complete (October 31, 2025)
 
@@ -137,8 +147,7 @@ Implemented comprehensive security hardening for validator deployments to protec
 ### Configuration Patterns
 - Rocket.toml for default configuration
 - Environment variables for overrides
-- Custom fields under `[default.custom]` section
-- Multi-node requires careful port management
+- Custom fields under `[default.custom]`
 
 ### Security Considerations
 - Single node deployments vulnerable to manipulation
@@ -200,43 +209,3 @@ Implemented comprehensive security hardening for validator deployments to protec
 
 ## Current Technical Debt
 None identified yet - fresh Memory Bank initialization.
-
-## Operational Notes
-
-### Reset Procedure (Development)
-1. Stop both zcash-vote-server and CometBFT
-2. Delete vote.db (or configured database)
-3. Run `cometbft unsafe-reset-all`
-4. Restart both services
-
-### Adding New Validator
-1. Initialize CometBFT on new node
-2. Extract validator public key from priv_validator_key.json
-3. Update genesis.json with new validator
-4. Distribute updated genesis.json to all nodes
-5. Configure persistent_peers with other validators
-6. Start services
-
-### Monitoring Points
-- Block height progression
-- Vote submission success rate
-- Consensus participation (validator signatures)
-- Database growth
-- API response times
-
-## Context for AI Assistant
-
-### Memory Bank Philosophy
-After each session reset, I (Cline) rely entirely on these Memory Bank files to understand the project. This activeContext.md file tracks current state and recent work, making it crucial for continuity.
-
-### When to Update
-- After implementing significant changes
-- When discovering new patterns or insights
-- When user requests with **update memory bank**
-- When context needs clarification
-
-### Project Maturity
-- Core application: Mature and functional (v1.0.2)
-- Infrastructure tooling: Mentioned in Project Brief but not yet implemented
-- Documentation: Good coverage in deployment guide
-- Testing: Manual testing procedures documented
