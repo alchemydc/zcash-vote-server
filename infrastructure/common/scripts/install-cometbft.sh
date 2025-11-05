@@ -5,7 +5,7 @@ set -euo pipefail
 # Install CometBFT (Tendermint BFT consensus engine)
 # Compatible with Ubuntu 22.04 LTS
 
-COMETBFT_VERSION="${COMETBFT_VERSION:-v0.38.0}"
+COMETBFT_VERSION="${COMETBFT_VERSION:-v1.0.1}"
 INSTALL_DIR="/usr/local/bin"
 TEMP_DIR="/tmp/cometbft-install"
 
