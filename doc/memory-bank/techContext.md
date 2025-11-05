@@ -164,6 +164,22 @@ For local testing with multiple nodes:
   - P2P: Default 26656
   - HTTP API: Default 8000
 
+### Optional Tailscale Integration (added Nov 4, 2025)
+- Tailscale may be used instead of exposing the P2P port publicly; when enabled the deployment:
+  - Skips creating a public P2P firewall rule.
+  - Installs and joins tailscaled on each validator using a headless auth key.
+  - Binds CometBFT `laddr` to the node's Tailscale IPv4 address and configured P2P port.
+  - Applies a local UFW rule to allow the configured P2P port only from the Tailscale subnet (100.64.0.0/10).
+- Terraform variables introduced: `enable_tailscale`, `tailscale_auth_key` (sensitive), `tailscale_tailnet`, `tailscale_advertise_tags`.
+- Implementation pointers:
+  - Headless auth keys should be stored in secret storage (Google Secret Manager) for production; avoid plaintext in tfvars.
+  - The installer script is `infrastructure/common/scripts/install-tailscale.sh` and `infrastructure/gcp/scripts/startup.sh` performs integration at boot when enabled.
+  - Operators should collect Tailscale IPs and use `node_id@TAILSCALE_IP:PORT` for `persistent_peers`.
+- Operational notes:
+  - Ensure outbound HTTPS is allowed so tailscaled can reach the control plane.
+  - Monitor with `tailscale status` and `journalctl -u tailscaled`.
+  - Do not advertise internet routes or enable exit nodes on validator machines.
+
 ### Resource Requirements
 - Minimal CPU (single-threaded operation sufficient)
 - RAM: ~100MB base + data size

@@ -106,10 +106,9 @@ export TAILSCALE_TAILNET="${tailscale_tailnet}"
 export TAILSCALE_TAGS="${tailscale_tags}"
 bash "$SCRIPTS_DIR/install-tailscale.sh"
 
-# Get Tailscale IP for CometBFT binding (may be empty on failure)
-TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || true)
-echo "Tailscale IP assigned: $${TAILSCALE_IP}"
-export COMETBFT_BIND_IP="$${TAILSCALE_IP}"
+# Do not assume Tailscale IP is immediately available; set a safe default.
+# COMETBFT_BIND_IP will be resolved after CometBFT is initialized.
+export COMETBFT_BIND_IP="0.0.0.0"
 %{ else }
 export COMETBFT_BIND_IP="0.0.0.0"
 %{ endif }
@@ -134,6 +133,31 @@ bash "$SCRIPTS_DIR/build-vote-server.sh"
 echo "[Phase 7] Initializing CometBFT..."
 sudo -u zcash-vote bash -c "cometbft init --home /opt/zcash-vote/.cometbft"
 
+# Resolve Tailscale IP (if enabled) after CometBFT init so the interface has time to come up.
+%{ if enable_tailscale }
+echo "[Phase 7.1] Resolving Tailscale IP for CometBFT binding..."
+# Wait up to 120 seconds, polling every 2s for a Tailscale IPv4 address
+TAILSCALE_IP=""
+for i in $(seq 1 60); do
+  TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || true)
+  if [ -n "$${TAILSCALE_IP}" ]; then
+    break
+  fi
+  sleep 2
+done
+
+if [ -n "$${TAILSCALE_IP}" ]; then
+  echo "Tailscale IP assigned: $${TAILSCALE_IP}"
+  export COMETBFT_BIND_IP="$${TAILSCALE_IP}"
+else
+  echo "Warning: Tailscale IP not available after wait; falling back to 0.0.0.0"
+  export COMETBFT_BIND_IP="0.0.0.0"
+fi
+%{ else }
+# Tailscale not enabled; use default bind
+export COMETBFT_BIND_IP="0.0.0.0"
+%{ endif }
+
 # Configure CometBFT binding and/or custom P2P port
 COMET_PORT="${cometbft_p2p_port}"
 if [ -n "$${COMETBFT_BIND_IP}" ] && [ "$${COMETBFT_BIND_IP}" != "0.0.0.0" ]; then
@@ -151,16 +175,15 @@ NODE_ID=$(sudo -u zcash-vote cometbft show-node-id --home /opt/zcash-vote/.comet
 echo "Node ID: $NODE_ID"
 
 # Display key backup instructions and public key info (safe to log)
-VALIDATOR_ADDRESS=$(sudo -u zcash-vote cometbft show-address --home /opt/zcash-vote/.cometbft || true)
+VALIDATOR_ADDRESS=$(sudo -u zcash-vote cometbft show-validator --home /opt/zcash-vote/.cometbft || true)
 VALIDATOR_PUBKEY=$(sudo -u zcash-vote jq -r '.pub_key.value' /opt/zcash-vote/.cometbft/config/priv_validator_key.json 2>/dev/null || echo "N/A")
-NODE_KEY_ID=$(sudo -u zcash-vote jq -r '.id' /opt/zcash-vote/.cometbft/config/node_key.json 2>/dev/null || echo "N/A")
 
 echo "=========================================="
 echo "IMPORTANT: BACKUP KEYS NOW"
 echo "=========================================="
 echo "Validator Address: $${VALIDATOR_ADDRESS}"
 echo "Validator PubKey: $${VALIDATOR_PUBKEY}"
-echo "Node Key ID: $${NODE_KEY_ID}"
+echo "Node Key ID: $${NODE_ID}"
 echo ""
 echo "Critical files to backup (on the instance):"
 echo "  - /opt/zcash-vote/.cometbft/config/priv_validator_key.json"

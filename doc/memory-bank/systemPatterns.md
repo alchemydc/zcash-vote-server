@@ -85,6 +85,33 @@
 - `orchard`: Cryptographic primitives
 - `blake2b_simd`: Fast hashing
 
+
+### 5. Optional Tailscale P2P Mesh (added Nov 4, 2025)
+**Decision**: Support an optional Tailscale WireGuard mesh for CometBFT P2P networking as an alternative to exposing the P2P port publicly.
+
+**Rationale**:
+- Encrypt P2P traffic end-to-end without managing VPNs or public firewall exposure.
+- Simplifies peering across NATs and cloud projects by using device-level IPs.
+- Enables defense-in-depth: local UFW + Tailnet ACLs, while avoiding public firewall rules.
+
+**Implementation**:
+- Terraform variables added: `enable_tailscale`, `tailscale_auth_key`, `tailscale_tailnet`, `tailscale_advertise_tags`.
+- `infrastructure/common/scripts/install-tailscale.sh` installs tailscale, performs headless auth with an auth key, and waits for a Tailscale IPv4 address.
+- `infrastructure/gcp/main.tf` conditionally skips creating the public CometBFT P2P firewall when `enable_tailscale = true`.
+- `infrastructure/gcp/scripts/startup.sh` will call `install-tailscale.sh` when enabled, read the assigned Tailscale IP (`tailscale ip -4`), and update CometBFT `laddr` to bind to that IP and configured P2P port.
+- A local UFW rule is applied to allow the configured P2P port only from the Tailscale subnet (100.64.0.0/10).
+- Startup logs the Tailscale IP when present; if Tailscale fails the script continues with warnings so operators can remediate.
+
+**Configuration notes**:
+- Operators should prefer storing the auth key in Secret Manager rather than passing it in plaintext.
+- ACL tag patterns and advertised tags allow Tailnet admins to restrict connectivity (e.g., `tag:validator`).
+- Migration path: enable Tailscale per-node, update `persistent_peers` to `node_id@TAILSCALE_IP:PORT`, verify consensus, then remove public firewall rules as appropriate.
+
+**Operational impact**:
+- Monitoring and troubleshooting must include `tailscale status` and `journalctl -u tailscaled`.
+- Ensure outbound HTTPS is allowed for tailscaled to reach the control plane.
+- Do not advertise internet routes from validator machines and do not enable exit nodes.
+
 ## Design Patterns in Use
 
 ### Repository Pattern
