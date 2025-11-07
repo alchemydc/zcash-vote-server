@@ -48,6 +48,17 @@
   - Operators should store auth keys in Secret Manager for production
   - Startup logs tailscale IP when available and continues gracefully with warnings if Tailscale fails
 
+- ✅ **GCP Log-based Metric: Block Height - Complete** (November 6, 2025)
+  - **Created `infrastructure/gcp/logging_metric.tf`**: user-defined log metric `cometbft_block_height`
+    - Filters syslog `jsonPayload.message` for CometBFT "Committed state" lines
+    - Extracts numeric `height` via regex and records values as a distribution
+    - Metric configured with DELTA/DISTRIBUTION descriptor and linear buckets
+    - Labels: `instance_name` (compute resource name), `zone` (resource.labels.zone)
+    - Purpose: enables dashboards/alerts to detect stalled validators and compare heights across nodes
+    - Usage note: In Cloud Monitoring, chart `logging.googleapis.com/user/cometbft_block_height` and use the `max` aggregation per `instance_name` to approximate current block height
+  - **Deployment**: added as Terraform resource; requires `roles/logging.logWriter` binding for service account (already managed in `main.tf`)
+  - **Reference**: `infrastructure/gcp/logging_metric.tf`
+
 ## What's Left to Build
 
 ### Infrastructure Automation ✅

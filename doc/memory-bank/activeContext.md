@@ -101,6 +101,15 @@ Implemented comprehensive security hardening for validator deployments to protec
     - Startup script logs a tailscale IP when available and continues gracefully with warnings if Tailscale fails so operators can inspect and remediate.
     - Migration path: enable Tailscale per-node, update peers to Tailscale IPs, then remove public firewall as desired.
 
+- ✅ **GCP Log-based Metric: Block Height - Complete** (November 6, 2025)
+  - **Created `infrastructure/gcp/logging_metric.tf`**: user-defined log metric `cometbft_block_height`
+    - Filters syslog `jsonPayload.message` for CometBFT "Committed state" lines
+    - Extracts numeric `height` via regex and records values as a distribution
+    - Labels: `instance_name` (compute resource name), `zone` (resource.labels.zone)
+    - Purpose: enables dashboards/alerts to detect stalled validators and compare heights across nodes
+    - Usage note: In Cloud Monitoring, chart `logging.googleapis.com/user/cometbft_block_height` and use the `max` aggregation per `instance_name` to approximate current block height
+  - **Deployment**: added as Terraform resource; requires `roles/logging.logWriter` binding for service account (already managed in `main.tf`)
+  - **Reference**: `infrastructure/gcp/logging_metric.tf`
 ### Key backup facilitation - Complete (October 31, 2025)
 
 - Implemented measures to encourage and facilitate secure backup of validator key material:
