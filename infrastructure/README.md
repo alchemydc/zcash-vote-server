@@ -211,6 +211,46 @@ Coordinate with other validators to update genesis file with new keys.
 - Check cloud firewall rules
 - Try cloud provider CLI (gcloud compute ssh, etc.)
 
+### Local node debugging
+
+Ensure `jq` is installed (`sudo apt install jq` or `brew install jq`).
+
+Useful quick checks (these query the local CometBFT RPC on the default port 26657 and pretty-print results with `jq`):
+
+- Show node info (id, moniker, version, etc.)
+```bash
+curl -s "http://localhost:26657/status" | jq .result.node_info
+```
+
+- List validator addresses known to this node
+```bash
+curl -s "http://localhost:26657/validators" | jq .result.validators[].address
+```
+
+- List peer monikers (human-readable peer names)
+```bash
+curl -s "http://localhost:26657/net_info" | jq .result.peers[].node_info.moniker
+```
+
+- List peer remote IPs (useful for connectivity checks)
+```bash
+curl -s "http://localhost:26657/net_info" | jq .result.peers[].remote_ip
+```
+
+- Show ABCI application information (verifies ABCI connection to zcash-vote-server)
+```bash
+curl -s "http://localhost:26657/abci_info" | jq
+```
+
+Notes:
+- These assume the node RPC is available on localhost:26657. If your node uses a different host/port, adjust the URL accordingly.
+- `abci_info` confirms the application is connected and responding; `status` shows sync/chain state.
+- If a command fails, check logs:
+```bash
+sudo journalctl -u cometbft -n 200
+sudo journalctl -u zcash-vote-server -n 200
+```
+
 ### Getting Help
 
 For infrastructure issues:
