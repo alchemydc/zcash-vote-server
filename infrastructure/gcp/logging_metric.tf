@@ -43,3 +43,39 @@ resource "google_logging_metric" "cometbft_block_height" {
 
   depends_on = [google_project_iam_member.logging]
 }
+
+resource "google_logging_metric" "zcash_vote_ballots_finalized" {
+  name        = "zcash_vote_ballots_finalized"
+  description = "Count zcash-vote-server 'Ballot finalized' events"
+  project     = var.project_id
+
+  filter = <<-EOT
+    resource.type="gce_instance"
+    logName="projects/${var.project_id}/logs/syslog"
+    jsonPayload.message=~"Ballot finalized"
+  EOT
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    unit         = "1"
+    display_name = "zcash-vote ballots finalized (delta)"
+
+    labels {
+      key        = "instance_name"
+      value_type = "STRING"
+    }
+
+    labels {
+      key        = "zone"
+      value_type = "STRING"
+    }
+  }
+
+  label_extractors = {
+    instance_name = "EXTRACT(labels.compute.googleapis.com/resource_name)"
+    zone          = "EXTRACT(resource.labels.zone)"
+  }
+
+  depends_on = [google_project_iam_member.logging]
+}
