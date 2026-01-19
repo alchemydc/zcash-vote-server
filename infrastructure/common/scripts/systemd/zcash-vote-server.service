@@ -1,0 +1,32 @@
+[Unit]
+Description=Zcash Vote Server
+Documentation=https://github.com/alchemydc/zcash-vote-server
+After=network-online.target cometbft.service
+Wants=network-online.target
+Requires=cometbft.service
+
+[Service]
+Type=simple
+User=zcash-vote
+Group=zcash-vote
+WorkingDirectory=/opt/zcash-vote/zcash-vote-server
+Environment="ROCKET_CONFIG=/opt/zcash-vote/config/Rocket.toml"
+Environment="RUST_LOG=info"
+ExecStart=/opt/zcash-vote/zcash-vote-server/target/release/zcash-vote-server
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zcash-vote-server
+
+[Install]
+WantedBy=multi-user.target
