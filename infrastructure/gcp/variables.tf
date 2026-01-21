@@ -172,3 +172,13 @@ variable "tailscale_advertise_tags" {
   type        = list(string)
   default     = []
 }
+
+variable "deployment_mode" {
+  description = "Deployment mode: 'docker' (uses pre-built binary/docker) or 'legacy' (compiles from source)"
+  type        = string
+  default     = "docker"
+  validation {
+    condition     = contains(["docker", "legacy"], var.deployment_mode)
+    error_message = "Deployment mode must be either 'docker' or 'legacy'."
+  }
+}

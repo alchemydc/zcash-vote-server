@@ -156,7 +156,7 @@ resource "google_compute_instance" "validator" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
       size  = var.boot_disk_size_gb
       type  = "pd-ssd"
     }
@@ -186,14 +186,16 @@ resource "google_compute_instance" "validator" {
     remote-ssh-enabled     = tostring(var.remote_ssh_enabled)
   }
 
-  metadata_startup_script = templatefile("${path.module}/scripts/startup.sh", {
-    cometbft_version    = var.cometbft_version
-    vote_server_repo    = var.vote_server_repo
-    vote_server_branch  = var.vote_server_branch
-    validator_name      = var.validator_name
-    enable_api_access   = var.enable_api_public_access
-    api_allowed_ranges  = join(",", var.api_allowed_ip_ranges)
-    cometbft_p2p_port   = var.cometbft_p2p_port
+  metadata_startup_script = var.deployment_mode == "docker" ? templatefile("${path.module}/scripts/startup-docker.sh", {
+    validator_name = var.validator_name
+  }) : templatefile("${path.module}/scripts/startup.sh", {
+    cometbft_version     = var.cometbft_version
+    vote_server_repo     = var.vote_server_repo
+    vote_server_branch   = var.vote_server_branch
+    validator_name       = var.validator_name
+    enable_api_access    = var.enable_api_public_access
+    api_allowed_ranges   = join(",", var.api_allowed_ip_ranges)
+    cometbft_p2p_port    = var.cometbft_p2p_port
     enable_tailscale     = var.enable_tailscale
     tailscale_auth_key   = var.tailscale_auth_key
     tailscale_tailnet    = var.tailscale_tailnet

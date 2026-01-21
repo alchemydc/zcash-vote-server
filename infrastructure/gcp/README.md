@@ -139,6 +139,41 @@ tofu apply
 
 Review the planned changes and type `yes` to proceed.
 
+## Deployment Modes
+
+This Terraform module supports two deployment modes, controlled by the `TF_VAR_deployment_mode` variable:
+
+1.  **Docker (Default)**: `export TF_VAR_deployment_mode="docker"`
+    -   Provisions a VM with Docker Engine and the Ops Agent.
+    -   Does **NOT** automatically compile or start the validator software.
+    -   **Action Required**: You must SSH into the instance and run the setup client manually.
+    -   **Pros**: Faster provisioning, cleaner environment.
+    -   **Cons**: Relies on pre-built binaries and Docker images (trust requirement).
+
+2.  **Legacy (Source Build)**: `export TF_VAR_deployment_mode="legacy"`
+    -   Compiles `zcash-vote-server` and `cometbft` from source.
+    -   Installs and starts systemd services automatically.
+    -   **Pros**: Full control over the build process, no binary trust required.
+    -   **Cons**: Slow provisioning (compilation takes time), more complex startup script.
+
+### Docker Mode Security Assumptions
+
+If you choose the Docker mode (default), be aware of the following:
+*   **Trust**: You trust the pre-compiled `client` binary and the `hhanh00/zcash-vote-docker` images.
+*   **Privilege**: The setup script adds the `zcash-vote` user to the `docker` group, effectively granting root-level access.
+*   **Manual Step**: The voting software will not run until you manually execute the client.
+
+### Docker Mode Workflow
+
+1.  **Provision**: `tofu apply`
+2.  **Connect**: `tofu output ssh_command`
+3.  **Setup**:
+    ```bash
+    sudo su - zcash-vote
+    ./client-x86_64 //$COORDINATOR_IP$:$COORDINATOR_PORT <your-node-name>
+    ```
+
+
 ### 5. Post-Deployment Configuration
 
 After deployment completes, the instance will automatically:

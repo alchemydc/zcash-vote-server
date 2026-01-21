@@ -401,6 +401,70 @@ sudo grep "Failed password" /var/log/auth.log | tail -20
 sudo fail2ban-client status sshd
 ```
 
+## Docker Deployment Security (zcash-vote-setup)
+
+When using the Docker-based deployment mode (`deployment_mode = "docker"`), the infrastructure relies on the [zcash-vote-setup](https://github.com/hhanh00/zcash-vote-setup) tool. This tool orchestrates the setup using Tailscale and CometBFT containers.
+
+### Step-by-Step Workflow
+
+1. **Server Initialization**:
+* The administrator configures `server_config.yml` with a `chainid`, a list of expected `peers` (node names), and a Tailscale `auth` key.
+* The server binary (`server.rs`) is started. It creates a local SQLite database (`setup.db`) to track the registration of voting nodes.
+* The server imports the initial voting data (`vote.db`) into its setup database to be distributed later.
+
+2. **Node (Client) Registration**:
+* Each participant runs the `client` binary, providing the server's URL and their specific node name.
+* The client connects to the server and retrieves the shared Tailscale authentication key.
+* The client uses **Docker** to start a Tailscale container, which joins the node to a private mesh network.
+
+3. **Consensus Setup**:
+* The client initializes a local CometBFT node using Docker.
+* It extracts its own unique validator information (Public Key and Node ID) and sends this "Node Definition" back to the server.
+
+4. **Configuration Convergence**:
+* The server waits until every node listed in the `peers` configuration has submitted its definition.
+* Once all nodes are registered, the server generates a global `genesis.json` (listing all validators) and a `config.toml` (listing all peers).
+* The next time a client polls the server, it receives this finalized configuration, the `vote.db` file, and a generated `run.sh` script.
+
+5. **System Launch**:
+* The client writes these files to its local disk.
+* The `run.sh` script is then used to launch the actual voting server and the CometBFT consensus engine as background processes managed by `supervisord`.
+
+### Security Assumptions and Risks
+
+Running this as a binary release involves several significant security assumptions and potential risks:
+
+#### 1. Trust in the Release and Infrastructure
+
+* **Binary Trust**: Users are instructed to download and run pre-compiled binaries. This assumes the build pipeline (GitHub Actions) and the developer's account are secure and have not been tampered with to include malicious code.
+* **Docker Image Trust**: The setup relies on the `hhanh00/zcash-vote-docker` image. Users must trust that this image contains only the claimed software (CometBFT, Tailscale, and the Zcash voting server) without backdoors.
+
+#### 2. Excessive Privileges
+
+* **Privileged Docker Containers**: The setup scripts consistently use the `--privileged` flag when running Docker. This effectively grants the container root-level access to the host machine's kernel and hardware, significantly increasing the risk if the containerized software is compromised.
+* **Root/Sudo Requirements**: The installation guide requires the user to be in the `docker` group or use `sudo`. This gives the `client` binary the ability to execute any command on the host via the Docker daemon.
+
+#### 3. Secrets Management
+
+* **Unauthenticated Secret Leakage**: The server's `get_ts_auth_key` gRPC endpoint provides the Tailscale authentication key to **any** requester without requiring a password or token. An attacker who discovers the server's URL can steal this key and join the private Tailscale network.
+* **Plaintext Configuration**: Secrets like the Tailscale auth key are stored in plaintext within `server_config.yml` and are passed as environment variables (`TS_AUTHKEY`) to Docker containers.
+
+#### 4. Command Injection Vulnerabilities
+
+* **Shell Execution**: The `run_command_in_container` function in `util.rs` builds shell commands by interpolating variables like `username`, `auth_key`, and `command` into a string before splitting it. While it uses `shell-words` for splitting, complex or malicious inputs could potentially lead to command injection on the host or inside the container.
+
+#### 5. Network Security
+
+* **Insecure RPC**: The setup communication between the client and server occurs over gRPC. Unless configured with external TLS (not explicitly handled in the setup code provided), the node definitions and configuration files are transmitted without encryption, making them vulnerable to interception on the public internet.
+  POC or GTFO:
+  ```bash
+    grpcurl -plaintext \
+    -proto protos/server_setup.proto \
+    -d '{}' \
+    $COORDINATOR_IP:$COORDINATOR_PORT \
+    vote_setup.rpc.VoteServerSetup/GetTSAuthKey
+  ```
+
 ## Support and Resources
 
 - fail2ban documentation: https://www.fail2ban.org/

@@ -138,9 +138,25 @@ output "api_endpoint" {
 
 output "post_deployment_instructions" {
   description = "Next steps after deployment"
-  value       = <<-EOT
+  value       = var.deployment_mode == "docker" ? (<<-EOT
+
+    Deployment complete (Docker Mode)! Next steps:
     
-    Deployment complete! Next steps:
+    1. SSH to the instance:
+       ${local.ssh_command}
+    
+    2. Run the setup client manually:
+       sudo su - zcash-vote
+       ./client-x86_64 $COORDINATOR_IP:$COORDINATOR_PORT <nodename>
+       
+       (Replace <nodename> with your actual node name)
+
+    3. Follow the on-screen instructions from the client.
+
+  EOT
+  ) : (<<-EOT
+    
+    Deployment complete (Legacy Mode)! Next steps:
     
     1. SSH to the instance:
        ${local.ssh_command}
@@ -185,4 +201,5 @@ output "post_deployment_instructions" {
        ${local.cometbft_addr}
     
   EOT
+  )
 }
