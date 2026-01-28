@@ -83,6 +83,16 @@ if ! command -v docker &> /dev/null; then
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     
     echo "Docker installed successfully"
+
+    # Configure Docker to use systemd (journald) for logging
+    echo "[Setup] Configuring Docker logging..."
+    cat > /etc/docker/daemon.json <<'DOCKERCONF'
+{
+  "log-driver": "systemd"
+}
+DOCKERCONF
+    systemctl restart docker
+    echo "Docker configured to log to systemd"
 else
     echo "Docker already installed"
 fi
